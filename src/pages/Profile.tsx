@@ -369,7 +369,7 @@ function ScannerSection() {
     try {
       const r = await fetch(url.replace(/\/$/, '') + '/health', { method: 'GET' });
       const j = (await r.json().catch(() => ({}))) as { ok?: boolean; configured?: boolean };
-      if (r.ok && j.ok) setStatus({ kind: j.configured === false ? 'fail' : 'ok', text: j.configured === false ? 'Server reached, but its AI key isn’t set.' : 'Scanner is reachable and ready.' });
+      if (r.ok && j.ok) setStatus({ kind: j.configured === false ? 'fail' : 'ok', text: j.configured === false ? 'Server reached, but its AI key isn’t set.' : 'AI server is reachable and ready.' });
       else setStatus({ kind: 'fail', text: `Server answered with ${r.status}.` });
     } catch {
       setStatus({ kind: 'fail', text: 'Couldn’t reach that address. Check the URL and that it allows this site.' });
@@ -377,11 +377,11 @@ function ScannerSection() {
   };
 
   return (
-    <Card title="AI scanner" icon="scan">
+    <Card title="AI scanner & coach" icon="sparkles">
       <p className="muted small">
-        The scanner runs on your own small server so the AI key never reaches the browser. The setup guide is in the project’s <code>server/README.md</code>.
+        The photo scanner and nutrition coach run on your own small server, so the AI key never reaches the browser. The setup guide is in the project’s <code>server/README.md</code>.
       </p>
-      <Field label="Scanner URL" error={!valid ? 'Use an https:// address' : null}>
+ <Field label="AI server URL" error={!valid ? 'Use an https:// address' : null}>
         <input type="url" inputMode="url" placeholder="https://fuelflow-scan.yourname.workers.dev" value={url} onChange={(e) => (setUrl(e.target.value.trim()), setStatus({ kind: 'idle' }))} />
       </Field>
       {status.kind !== 'idle' && <p className={'notice' + (status.kind === 'fail' ? ' warn' : status.kind === 'ok' ? ' ok' : '')}>{status.kind === 'testing' ? 'Testing…' : status.text}</p>}
@@ -394,7 +394,7 @@ function ScannerSection() {
           disabled={!valid || url === (p.scannerEndpoint ?? '')}
           onClick={() => {
             store.updateProfile({ scannerEndpoint: url || undefined });
-            store.showToast(url ? 'Scanner saved' : 'Scanner removed');
+            store.showToast(url ? 'AI server saved' : 'AI server removed');
           }}
         >
           Save

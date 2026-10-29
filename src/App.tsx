@@ -11,13 +11,15 @@ import { Diary } from './pages/Diary';
 const Scan = lazy(() => import('./pages/Scan').then((m) => ({ default: m.Scan })));
 const Progress = lazy(() => import('./pages/Progress').then((m) => ({ default: m.Progress })));
 const Profile = lazy(() => import('./pages/Profile').then((m) => ({ default: m.Profile })));
+const Coach = lazy(() => import('./pages/Coach').then((m) => ({ default: m.Coach })));
 const Premium = lazy(() => import('./pages/Premium').then((m) => ({ default: m.Premium })));
 
-const NAV: Array<{ to: string; label: string; icon: IconName; center?: boolean }> = [
+const NAV: Array<{ to: string; label: string; icon: IconName; center?: boolean; sideOnly?: boolean }> = [
   { to: '/', label: 'Home', icon: 'home' },
   { to: '/diary', label: 'Diary', icon: 'diary' },
   { to: '/scan', label: 'Scan', icon: 'scan', center: true },
   { to: '/progress', label: 'Progress', icon: 'chart' },
+  { to: '/coach', label: 'Coach', icon: 'sparkles', sideOnly: true },
   { to: '/profile', label: 'Profile', icon: 'user' },
 ];
 
@@ -26,7 +28,7 @@ function Nav({ path }: { path: string }) {
   return (
     <>
       <nav className="bottom-nav" aria-label="Main">
-        {NAV.map((n) => (
+        {NAV.filter((n) => !n.sideOnly).map((n) => (
           <Link key={n.to} to={n.to} className={'bn-item' + (active(n.to) ? ' on' : '') + (n.center ? ' center' : '')} aria-current={active(n.to) ? 'page' : undefined}>
             <span className="bn-icon">
               <Icon name={n.icon} size={n.center ? 24 : 22} />
@@ -57,7 +59,7 @@ function Shell() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    const titles: Record<string, string> = { '/': 'Home', '/diary': 'Diary', '/scan': 'Scan', '/progress': 'Progress', '/profile': 'Profile', '/premium': 'Premium' };
+    const titles: Record<string, string> = { '/': 'Home', '/diary': 'Diary', '/scan': 'Scan', '/progress': 'Progress', '/profile': 'Profile', '/premium': 'Premium', '/coach': 'Coach' };
     document.title = `${titles[path] ?? 'FuelFlow'} · FuelFlow`;
   }, [path]);
 
@@ -80,6 +82,9 @@ function Shell() {
     case '/profile':
       page = <Profile />;
       break;
+    case '/coach':
+      page = <Coach />;
+      break;
     case '/premium':
       page = <Premium />;
       break;
@@ -95,7 +100,7 @@ function Shell() {
   }
 
   return (
-    <div className="app">
+    <div className={'app' + (path === '/coach' ? ' route-coach' : '')}>
       <Nav path={path} />
       <main className="main" id="main">
         {store.saveError && (

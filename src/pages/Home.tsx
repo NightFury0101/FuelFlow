@@ -133,9 +133,9 @@ export function Home() {
           <Icon name="drop" size={20} />
           <span>Water</span>
         </button>
-        <button className="quick-btn" onClick={() => setWeightOpen(true)}>
-          <Icon name="scale" size={20} />
-          <span>Weight</span>
+        <button className="quick-btn" onClick={() => navigate('/coach')}>
+          <Icon name="sparkles" size={20} />
+          <span>AI Coach</span>
         </button>
       </nav>
 

@@ -1,6 +1,6 @@
-# Setting up the AI food scanner
+# Setting up the AI scanner and nutrition coach
 
-FuelFlow runs on GitHub Pages, and GitHub Pages can only serve public files. An AI API key placed in the app would be visible to anyone. So photo scanning goes through a small **Cloudflare Worker** that holds the key privately. The free plan is enough for personal use.
+FuelFlow runs on GitHub Pages, and GitHub Pages can only serve public files. An AI API key placed in the app would be visible to anyone. So photo scanning and the nutrition coach both go through a small **Cloudflare Worker** that holds the key privately. The free plan is enough for personal use.
 
 ## 1. Get an AI key
 
@@ -30,7 +30,7 @@ In Cloudflare, open **Security → WAF → Rate limiting rules** and add a rule 
 
 ## 5. Connect FuelFlow
 
-1. Open FuelFlow → **Profile → AI scanner**.
+1. Open FuelFlow → **Profile → AI scanner & coach**.
 2. Paste the Worker URL, for example `https://fuelflow-scan.yourname.workers.dev`.
 3. Tap **Test**, then **Save**.
 
@@ -40,6 +40,7 @@ In Cloudflare, open **Security → WAF → Rate limiting rules** and add a rule 
 - The Worker forwards each photo to the AI provider and keeps nothing.
 - Logs record status codes only, never images or keys.
 - Results are always shown to you for review and are never saved automatically.
+- The coach only receives a summary of your food log if you turn on *Let the coach see my log*. Chat history stays in your browser.
 
 ## Testing locally without a key
 

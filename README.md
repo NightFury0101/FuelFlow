@@ -21,7 +21,8 @@ FuelFlow is a mobile-first calorie counter, nutrition tracker and AI meal scanne
   - Calorie, protein and water charts for 7 or 30 days, comparison with the previous period, and logging consistency.
   - Days you didn't log are shown as gaps, never as zero.
 - **AI scanner** – Take or upload a photo, review the estimated items with confidence labels, change portion sizes (macros scale with them), add missing items, answer clarifying questions and rescan, then save. Nothing is saved without your confirmation. The scanner needs the private server in [`server/`](./server/README.md); until that is set up, the screen says so and offers manual logging.
-- **Profile** – Body and goal details with target recalculation, target editing, units, meals, scanner setup, JSON backup and restore, diary and progress CSV export, and delete-all.
+- **AI nutrition coach** – A chat screen for food questions: meal ideas that fit what's left of today's calories, weekly reviews, label reading, eating out and cravings. It covers food only, not workouts. It sees your food log **only if you allow it**, and then only a short summary built from your real records. Its rules rule out crash diets, diagnoses and pushing supplements, and steer medical situations to a professional. It uses the same private server as the scanner (`POST /chat`).
+- **Profile** – Body and goal details with target recalculation, target editing, units, meals, AI server setup, JSON backup and restore, diary and progress CSV export, and delete-all.
 - **Premium** – A plan comparison page. Billing isn't connected, so no one can be charged and every feature stays free (see `src/lib/plans.ts`).
 
 ## Where your data lives
@@ -63,7 +64,6 @@ These are planned for later stages:
 
 - Recipes with multiple ingredients
 - Meal planning
-- AI nutrition coach
 - Reminders (they need push notifications and a backend)
 - Cloud accounts and sync
 - Real billing

@@ -117,7 +117,8 @@ export interface Profile {
   meals: MealSlot[];
   onboarded: boolean;
   setupIncomplete: boolean; // user skipped body details
-  scannerEndpoint?: string;
+  scannerEndpoint?: string; // the user's private AI server (scanner + coach)
+  coachShareLog?: boolean; // opt-in: let the coach see a summary of the food log
   waterQuickAdds: number[]; // ml
   createdAt: number;
 }
