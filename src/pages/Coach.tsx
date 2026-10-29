@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useStore } from '../lib/store';
+import { useAi } from '../lib/useAi';
 import { safeLocalStorage, uid } from '../lib/storage';
 import { askCoach, buildContext, CoachError, loadMessages, saveMessages, STARTERS, MAX_CHARS, type CoachMessage } from '../lib/coach';
 import { Card } from '../components/ui';
@@ -53,7 +54,7 @@ export function RichText({ text }: { text: string }) {
 export function Coach() {
   const store = useStore();
   const profile = store.profile!;
-  const endpoint = profile.scannerEndpoint;
+  const ai = useAi();
   const ls = safeLocalStorage();
   const [messages, setMessages] = useState<CoachMessage[]>(() => loadMessages(ls));
   const [input, setInput] = useState('');
@@ -70,7 +71,7 @@ export function Coach() {
 
   const send = async (text: string) => {
     const q = text.trim().slice(0, MAX_CHARS);
-    if (!q || busy || !endpoint) return;
+    if (!q || busy || !ai) return;
     const userMsg: CoachMessage = { id: uid('c-'), role: 'user', text: q, at: Date.now() };
     const history = [...messages.filter((m) => !m.error), userMsg];
     setMessages((m) => [...m.filter((x) => !x.error), userMsg]);
@@ -79,7 +80,7 @@ export function Coach() {
     const c = new AbortController();
     ctrl.current = c;
     try {
-      const reply = await askCoach(endpoint, history, buildContext(profile, store.data, !!share), c.signal);
+      const reply = await askCoach(ai, history, buildContext(profile, store.data, !!share), c.signal);
       setMessages((m) => [...m, { id: uid('c-'), role: 'assistant', text: reply, at: Date.now() }]);
     } catch (e) {
       if ((e as Error).name === 'AbortError') return;
@@ -120,7 +121,7 @@ export function Coach() {
         )}
       </header>
 
-      {!endpoint ? (
+      {!ai ? (
         <Card className="scan-setup">
           <div className="scan-hero" aria-hidden="true">
             <div className="scan-frame">
@@ -128,9 +129,9 @@ export function Coach() {
             </div>
           </div>
           <h2>The coach isn’t connected yet</h2>
-          <p className="muted">The coach uses the same private server as the photo scanner, which keeps the AI key secret. Set it up once and both features start working.</p>
+          <p className="muted">The coach uses the same Claude API key as the photo scanner. Add it once in your profile and both start working.</p>
           <Link to="/profile?section=scanner" className="btn btn-primary block">
-            Set up AI features
+            Add API key
           </Link>
         </Card>
       ) : (
@@ -141,7 +142,7 @@ export function Coach() {
                 <Icon name="lock" size={16} /> Let the coach see your food log?
               </p>
               <p className="muted small">
-                With this on, each question also sends a short summary — today’s totals, the foods you logged, your weekly averages and latest weight — so answers fit your day. It goes only to your own AI server. You can change this any time.
+                With this on, each question also sends a short summary — today’s totals, the foods you logged, your weekly averages and latest weight — so answers fit your day. It’s sent only to the AI to answer you. You can change this any time.
               </p>
               <div className="sheet-actions">
                 <button className="btn btn-ghost grow" onClick={() => store.updateProfile({ coachShareLog: false })}>

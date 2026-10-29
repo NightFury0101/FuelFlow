@@ -4,6 +4,8 @@
 // "Let the coach see my log" on, and only as a short summary built from real records.
 
 import type { AppData, Profile } from './types';
+import { AiError, callClaude, type AiConfig } from './ai';
+import { coachSystemWithContext } from './prompts';
 import { addDays, todayKey } from './date';
 import { entriesForDay, sumNutrients } from './nutrition';
 import { dailyTotals, summarize, sortedWeights, changeOver } from './analytics';
@@ -103,15 +105,27 @@ export const STARTERS = [
 
 export class CoachError extends Error {}
 
-export async function askCoach(endpoint: string, history: CoachMessage[], context: string, signal?: AbortSignal): Promise<string> {
+export async function askCoach(ai: AiConfig, history: CoachMessage[], context: string, signal?: AbortSignal): Promise<string> {
   const messages = history
     .filter((m) => !m.error)
     .slice(-MAX_SENT)
     .map((m) => ({ role: m.role, content: m.text.slice(0, MAX_CHARS) }));
   while (messages.length && messages[0].role !== 'user') messages.shift();
+
+  if (ai.kind === 'key') {
+    try {
+      const reply = await callClaude(ai.key, { system: coachSystemWithContext(context.slice(0, 3000)), messages, maxTokens: 900, signal });
+      if (!reply) throw new CoachError('The coach sent an empty answer. Try asking again.');
+      return reply.slice(0, 6000);
+    } catch (e) {
+      if ((e as Error).name === 'AbortError' || e instanceof CoachError) throw e;
+      throw new CoachError(e instanceof AiError ? e.message : 'Something went wrong. Try again.');
+    }
+  }
+
   let res: Response;
   try {
-    res = await fetch(endpoint.replace(/\/$/, '') + '/chat', {
+    res = await fetch(ai.url.replace(/\/$/, '') + '/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages, context }),

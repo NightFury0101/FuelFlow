@@ -1,3 +1,6 @@
+import { AiError, callClaude, extractJson, type AiConfig } from './ai';
+import { SCAN_SYSTEM } from './prompts';
+
 // Client for the AI food scanner.
 // The browser never talks to an AI provider directly: it sends the photo to a small server
 // (see /server/scan-worker.js) that keeps the API key secret. Until that server URL is set
@@ -91,10 +94,36 @@ export class ScanError extends Error {
   }
 }
 
-export async function scanFood(endpoint: string, imageDataUrl: string, details: string, signal?: AbortSignal): Promise<ScanResult> {
+export async function scanFood(ai: AiConfig, imageDataUrl: string, details: string, signal?: AbortSignal): Promise<ScanResult> {
+  if (ai.kind === 'key') {
+    const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(imageDataUrl);
+    if (!m) throw new ScanError('That photo couldn’t be prepared. Try another one.', false);
+    try {
+      const text = await callClaude(ai.key, {
+        system: SCAN_SYSTEM,
+        maxTokens: 1200,
+        signal,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } },
+              { type: 'text', text: details.trim() ? `Extra details from me: ${details.slice(0, 500)}` : 'Estimate this meal.' },
+            ],
+          },
+        ],
+      });
+      return parseScanResponse(extractJson(text));
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') throw e;
+      if (e instanceof AiError) throw new ScanError(e.message, e.retryable);
+      throw new ScanError('Something went wrong while scanning.');
+    }
+  }
+
   let res: Response;
   try {
-    res = await fetch(endpoint, {
+    res = await fetch(ai.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image: imageDataUrl, details: details.slice(0, 500) }),

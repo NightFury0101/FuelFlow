@@ -177,6 +177,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: true, message: `Restored ${next.entries.length} food entries, ${next.weights.length} weigh-ins.` };
       },
       resetAll: () => {
+        try {
+          // Also forget the AI key and coach chat kept outside the main data.
+          const ls = window.localStorage;
+          ls.removeItem('fuelflow:anthropic-key');
+          ls.removeItem('fuelflow:coach:v1');
+          window.dispatchEvent(new Event('fuelflow:ai-changed'));
+        } catch {
+          /* ignore */
+        }
         setData({ ...normalizeData(null) });
       },
     };

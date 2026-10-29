@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Food } from '../lib/types';
 import { useStore } from '../lib/store';
+import { useAi } from '../lib/useAi';
 import { todayKey } from '../lib/date';
 import { uid } from '../lib/storage';
 import { compressImage, scanFood, validateImageFile, ScanError, type ScanItem } from '../lib/scanner';
@@ -23,7 +24,7 @@ const toEdit = (it: ScanItem): EditItem => ({ ...it, key: uid('i-'), base: { gra
 export function Scan() {
   const store = useStore();
   const profile = store.profile!;
-  const endpoint = profile.scannerEndpoint;
+  const ai = useAi();
   const [phase, setPhase] = useState<Phase>({ kind: 'pick' });
   const [items, setItems] = useState<EditItem[]>([]);
   const [questions, setQuestions] = useState<string[]>([]);
@@ -41,13 +42,13 @@ export function Scan() {
   useEffect(() => () => ctrl.current?.abort(), []);
 
   const run = async (image: string, extra: string) => {
-    if (!endpoint) return;
+    if (!ai) return;
     ctrl.current?.abort();
     const c = new AbortController();
     ctrl.current = c;
     setPhase({ kind: 'working', image });
     try {
-      const r = await scanFood(endpoint, image, extra, c.signal);
+      const r = await scanFood(ai, image, extra, c.signal);
       if (r.items.length === 0) {
         setPhase({ kind: 'error', image, message: 'No food was recognised in this photo. Try a clearer, top-down shot in good light — or log it manually.', retryable: true });
         return;
@@ -140,20 +141,18 @@ export function Scan() {
       <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => (onFile(e.target.files?.[0]), (e.target.value = ''))} />
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic" hidden onChange={(e) => (onFile(e.target.files?.[0]), (e.target.value = ''))} />
 
-      {!endpoint ? (
+      {!ai ? (
         <Card className="scan-setup">
           <div className="scan-hero" aria-hidden="true">
             <div className="scan-frame">
               <Icon name="scan" size={44} />
             </div>
           </div>
-          <h2>The AI scanner isn’t connected yet</h2>
-          <p className="muted">
-            Photo scanning needs a small private server that keeps the AI key secret. Once it’s set up, paste its address in your profile and this screen starts working. Everything else in FuelFlow works without it.
-          </p>
+          <h2>Connect the AI to start scanning</h2>
+          <p className="muted">Snap your meal and FuelFlow estimates each food’s portion, calories, protein, carbs and fat. Add your Claude API key once in your profile — it stays on this device.</p>
           <div className="stack">
             <Link to="/profile?section=scanner" className="btn btn-primary block">
-              Set up the scanner
+              Add API key
             </Link>
             <button className="btn btn-secondary block" onClick={() => setManual(true)}>
               Log food manually instead
@@ -178,7 +177,7 @@ export function Scan() {
                   <Icon name="upload" size={18} /> Upload from gallery
                 </button>
               </div>
-              <p className="muted small center">Photos are sent only to your scanner for analysis and aren’t stored by FuelFlow.</p>
+              <p className="muted small center">Photos are sent only to the AI for analysis and aren’t stored by FuelFlow.</p>
             </Card>
           )}
 

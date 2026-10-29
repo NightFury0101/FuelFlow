@@ -6,6 +6,7 @@ import { ageFromBirthDate, isValidDateKey, todayKey } from '../lib/date';
 import { backupJson, diaryCsv, progressCsv, uid } from '../lib/storage';
 import { displayWater, displayWeight, weightToKg, weightValue, waterToMl, ML_PER_FLOZ } from '../lib/units';
 import { isValidEndpoint } from '../lib/scanner';
+import { getApiKey, looksLikeKey, maskKey, setApiKey, testKey } from '../lib/ai';
 import { BILLING_ENABLED } from '../lib/plans';
 import { Card, Field, NumberInput, Segmented, parseNum } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -360,11 +361,34 @@ function MealsSection() {
 function ScannerSection() {
   const store = useStore();
   const p = store.profile!;
+  const [saved, setSaved] = useState<string | null>(() => getApiKey());
+  const [mode, setMode] = useState<'key' | 'server'>(() => (getApiKey() || !p.scannerEndpoint ? 'key' : 'server'));
+  const [key, setKey] = useState('');
+  const [show, setShow] = useState(false);
   const [url, setUrl] = useState(p.scannerEndpoint ?? '');
   const [status, setStatus] = useState<{ kind: 'idle' | 'testing' | 'ok' | 'fail'; text?: string }>({ kind: 'idle' });
-  const valid = !url || isValidEndpoint(url);
+  const validUrl = !url || isValidEndpoint(url);
+  const keyOk = looksLikeKey(key);
 
-  const test = async () => {
+  const saveKey = async () => {
+    setStatus({ kind: 'testing' });
+    const r = await testKey(key.trim());
+    if (!r.ok) return setStatus({ kind: 'fail', text: r.message });
+    setApiKey(key.trim());
+    setSaved(key.trim());
+    setKey('');
+    setStatus({ kind: 'ok', text: r.message });
+    store.showToast('AI connected');
+  };
+
+  const testSaved = async () => {
+    if (!saved) return;
+    setStatus({ kind: 'testing' });
+    const r = await testKey(saved);
+    setStatus({ kind: r.ok ? 'ok' : 'fail', text: r.message });
+  };
+
+  const testServer = async () => {
     setStatus({ kind: 'testing' });
     try {
       const r = await fetch(url.replace(/\/$/, '') + '/health', { method: 'GET' });
@@ -378,27 +402,113 @@ function ScannerSection() {
 
   return (
     <Card title="AI scanner & coach" icon="sparkles">
-      <p className="muted small">
-        The photo scanner and nutrition coach run on your own small server, so the AI key never reaches the browser. The setup guide is in the project’s <code>server/README.md</code>.
-      </p>
- <Field label="AI server URL" error={!valid ? 'Use an https:// address' : null}>
-        <input type="url" inputMode="url" placeholder="https://fuelflow-scan.yourname.workers.dev" value={url} onChange={(e) => (setUrl(e.target.value.trim()), setStatus({ kind: 'idle' }))} />
-      </Field>
-      {status.kind !== 'idle' && <p className={'notice' + (status.kind === 'fail' ? ' warn' : status.kind === 'ok' ? ' ok' : '')}>{status.kind === 'testing' ? 'Testing…' : status.text}</p>}
-      <div className="sheet-actions">
-        <button className="btn btn-ghost" disabled={!url || !valid || status.kind === 'testing'} onClick={test}>
-          Test
-        </button>
-        <button
-          className="btn btn-primary grow"
-          disabled={!valid || url === (p.scannerEndpoint ?? '')}
-          onClick={() => {
-            store.updateProfile({ scannerEndpoint: url || undefined });
-            store.showToast(url ? 'AI server saved' : 'AI server removed');
-          }}
-        >
-          Save
-        </button>
+      <div className="form">
+        <Segmented
+          label="How to connect the AI"
+          value={mode}
+          onChange={(v) => (setMode(v), setStatus({ kind: 'idle' }))}
+          options={[
+            { value: 'key', label: 'API key' },
+            { value: 'server', label: 'Own server' },
+          ]}
+        />
+
+        {mode === 'key' ? (
+          saved ? (
+            <>
+              <div className="key-row">
+                <Icon name="lock" size={16} />
+                <span>
+                  <strong>Claude connected</strong>
+                  <span className="muted small block">Key {maskKey(saved)} · stored on this device only</span>
+                </span>
+              </div>
+              <div className="sheet-actions">
+                <button
+                  className="btn btn-ghost danger"
+                  onClick={() => {
+                    if (!window.confirm('Remove the API key from this device? The scanner and coach will stop working until you add one again.')) return;
+                    setApiKey(null);
+                    setSaved(null);
+                    setStatus({ kind: 'idle' });
+                    store.showToast('API key removed');
+                  }}
+                >
+                  Remove
+                </button>
+                <button className="btn btn-secondary grow" disabled={status.kind === 'testing'} onClick={testSaved}>
+                  Test connection
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <ol className="steps small">
+                <li>
+                  Sign in at{' '}
+                  <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" className="accent">
+                    console.anthropic.com
+                  </a>{' '}
+                  and add a little credit under Billing.
+                </li>
+                <li>
+                  Go to <strong>API keys → Create key</strong>, copy it.
+                </li>
+                <li>Paste it below and tap Connect.</li>
+              </ol>
+              <Field label="Claude API key" error={key && !keyOk ? 'API keys start with sk-ant-' : null}>
+                <div className="key-input">
+                  <input
+                    type={show ? 'text' : 'password'}
+                    value={key}
+                    onChange={(e) => (setKey(e.target.value.trim()), setStatus({ kind: 'idle' }))}
+                    placeholder="sk-ant-…"
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                  />
+                  <button type="button" className="link-btn" onClick={() => setShow((x) => !x)}>
+                    {show ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </Field>
+              <button className="btn btn-primary block" disabled={!keyOk || status.kind === 'testing'} onClick={saveKey}>
+                {status.kind === 'testing' ? 'Checking…' : 'Connect'}
+              </button>
+            </>
+          )
+        ) : (
+          <>
+            <p className="muted small">
+              For when other people use your FuelFlow: a small Cloudflare server holds the key instead of each phone. Setup guide: <code>server/README.md</code>.
+            </p>
+            <Field label="AI server URL" error={!validUrl ? 'Use an https:// address' : null}>
+              <input type="url" inputMode="url" placeholder="https://fuelflow-scan.yourname.workers.dev" value={url} onChange={(e) => (setUrl(e.target.value.trim()), setStatus({ kind: 'idle' }))} />
+            </Field>
+            <div className="sheet-actions">
+              <button className="btn btn-ghost" disabled={!url || !validUrl || status.kind === 'testing'} onClick={testServer}>
+                Test
+              </button>
+              <button
+                className="btn btn-primary grow"
+                disabled={!validUrl || url === (p.scannerEndpoint ?? '')}
+                onClick={() => {
+                  store.updateProfile({ scannerEndpoint: url || undefined });
+                  store.showToast(url ? 'AI server saved' : 'AI server removed');
+                }}
+              >
+                Save
+              </button>
+            </div>
+            {saved && <p className="muted small">An API key is also saved on this device and is used first.</p>}
+          </>
+        )}
+        {status.kind !== 'idle' && <p className={'notice' + (status.kind === 'fail' ? ' warn' : status.kind === 'ok' ? ' ok' : '')}>{status.kind === 'testing' ? 'Testing…' : status.text}</p>}
+        {mode === 'key' && (
+          <p className="muted small">
+            Your key is kept only in this browser — not in backups, not on GitHub. Each scan or question uses a small amount of your Anthropic credit, so set a monthly limit in the Anthropic console. Anyone using this phone’s browser could use the key.
+          </p>
+        )}
       </div>
     </Card>
   );

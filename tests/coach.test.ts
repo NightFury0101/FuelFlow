@@ -70,3 +70,22 @@ test('chat history is validated and capped', () => {
   mem.set('fuelflow:coach:v1', 'garbage');
   assert.equal(loadMessages(s).length, 0);
 });
+
+import { extractJson, looksLikeKey, maskKey, AiError } from '../src/lib/ai';
+import { parseScanResponse } from '../src/lib/scanner';
+
+test('reads JSON from model replies with fences or extra words', () => {
+  const reply = 'Here you go:\n```json\n{"items":[{"name":"Mas huni","grams":120,"kcal":260,"protein":14,"carbs":8,"fat":19,"confidence":"medium"}],"questions":[]}\n```';
+  const r = parseScanResponse(extractJson(reply));
+  assert.equal(r.items[0].name, 'Mas huni');
+  assert.equal(r.items[0].kcal, 260);
+  assert.throws(() => extractJson('no json here'), AiError);
+});
+
+test('API key format check and masking', () => {
+  assert.ok(looksLikeKey('sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123'));
+  assert.ok(!looksLikeKey('sk-proj-123'));
+  assert.ok(!looksLikeKey(''));
+  const m = maskKey('sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123');
+  assert.ok(m.startsWith('sk-ant-api') && m.endsWith('0123') && !m.includes('mnop'));
+});

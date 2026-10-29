@@ -15,6 +15,7 @@
 const MAX_BODY = 6 * 1024 * 1024; // ~4.5 MB image after base64
 const SYSTEM = `You estimate the nutrition of meals from photos for a calorie-tracking app.
 Identify each distinct food or drink you can see. For each, estimate a plausible portion in grams and the calories, protein, carbohydrate and fat for THAT portion, using typical reference values.
+Count separate components separately (for example rice, curry and salad are three items), but don't split a single dish into raw ingredients.
 Be honest about uncertainty: use "high" confidence only when the food and portion are clear, "medium" when the food is clear but the portion is not, and "low" otherwise.
 If cooking oil, sauces, dressings or hidden ingredients could change the total meaningfully, ask up to 3 short questions.
 If the user gives extra details, use them.
