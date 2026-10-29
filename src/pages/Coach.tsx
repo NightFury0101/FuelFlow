@@ -129,7 +129,7 @@ export function Coach() {
             </div>
           </div>
           <h2>Connect your nutrition coach</h2>
-          <p className="muted">Ask anything about food — meal ideas that fit your day, labels, cravings, eating out. Connect it once with your Claude API key; the key stays on this device.</p>
+          <p className="muted">Ask anything about food — meal ideas that fit your day, labels, cravings, eating out. Connect it once with a free Gemini key (or Claude); the key stays on this device.</p>
           <Link to="/profile?section=ai" className="btn btn-primary block">
             Add API key
           </Link>

@@ -4,7 +4,7 @@
 // "Let the coach see my log" on, and only as a short summary built from real records.
 
 import type { AppData, Profile } from './types';
-import { AiError, callClaude, type AiConfig } from './ai';
+import { AiError, callAi, type AiConfig } from './ai';
 import { coachSystemWithContext } from './prompts';
 import { addDays, todayKey } from './date';
 import { entriesForDay, sumNutrients } from './nutrition';
@@ -119,7 +119,7 @@ export async function askCoach(ai: AiConfig, history: CoachMessage[], context: s
 
   if (ai.kind === 'key') {
     try {
-      const reply = await callClaude(ai.key, { system: coachSystemWithContext(context.slice(0, 3000)), messages, maxTokens: 900, signal });
+      const reply = await callAi(ai, { system: coachSystemWithContext(context.slice(0, 3000)), messages, maxTokens: 900, signal });
       if (!reply) throw new CoachError('The coach sent an empty answer. Try asking again.');
       return reply.slice(0, 6000);
     } catch (e) {

@@ -213,6 +213,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           // Also forget the AI key and coach chat kept outside the main data.
           const ls = window.localStorage;
           ls.removeItem('fuelflow:anthropic-key');
+          ls.removeItem('fuelflow:gemini-key');
+          ls.removeItem('fuelflow:ai-provider');
           ls.removeItem('fuelflow:coach:v1');
           window.dispatchEvent(new Event('fuelflow:ai-changed'));
         } catch {

@@ -71,7 +71,7 @@ test('chat history is validated and capped', () => {
   assert.equal(loadMessages(s).length, 0);
 });
 
-import { extractJson, looksLikeKey, maskKey, AiError, isValidEndpoint } from '../src/lib/ai';
+import { extractJson, looksLikeKey, maskKey, AiError, isValidEndpoint, callGemini, GEMINI_MODELS } from '../src/lib/ai';
 
 test('reads JSON from model replies with fences or extra words', () => {
   const reply = 'Here you go:\n```json\n{"name":"Mas huni","kcal":260}\n```';
@@ -80,11 +80,13 @@ test('reads JSON from model replies with fences or extra words', () => {
 });
 
 test('API key format check and masking', () => {
-  assert.ok(looksLikeKey('sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123'));
-  assert.ok(!looksLikeKey('sk-proj-123'));
-  assert.ok(!looksLikeKey(''));
+  assert.ok(looksLikeKey('claude', 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123'));
+  assert.ok(!looksLikeKey('claude', 'AIzaSyA1234567890abcdefghijklmnopqrstuv'));
+  assert.ok(looksLikeKey('gemini', 'AIzaSyA1234567890abcdefghijklmnopqrstuv'));
+  assert.ok(!looksLikeKey('gemini', 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123'));
+  assert.ok(!looksLikeKey('gemini', ''));
   const m = maskKey('sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123');
-  assert.ok(m.startsWith('sk-ant-api') && m.endsWith('0123') && !m.includes('mnop'));
+  assert.ok(m.startsWith('sk-ant-a') && m.endsWith('0123') && !m.includes('mnop'));
 });
 
 test('server URL must be https (or localhost for testing)', () => {
@@ -102,4 +104,70 @@ test('coach sees planned food separately from eaten food', () => {
   assert.ok(ctx.includes('Logged today: 300 kcal'));
   assert.ok(ctx.includes('Planned but not yet eaten today'));
   assert.ok(ctx.includes('Fish curry'));
+});
+
+type Call = { url: string; init: RequestInit };
+function mockFetch(responses: Array<{ status: number; body: unknown }>) {
+  const calls: Call[] = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init: RequestInit) => {
+    calls.push({ url, init });
+    const r = responses.shift()!;
+    return new Response(JSON.stringify(r.body), { status: r.status, headers: { 'content-type': 'application/json' } });
+  }) as typeof fetch;
+  return { calls, restore: () => (globalThis.fetch = orig) };
+}
+
+test('Gemini request format and reply parsing', async () => {
+  const m = mockFetch([{ status: 200, body: { candidates: [{ content: { parts: [{ text: 'thinking…', thought: true }, { text: 'Eat more fish.' }] }, finishReason: 'STOP' }] } }]);
+  try {
+    const reply = await callGemini('AIzaTEST', {
+      system: 'SYS',
+      messages: [
+        { role: 'user', content: 'Hi' },
+        { role: 'assistant', content: 'Hello' },
+        { role: 'user', content: 'Protein ideas?' },
+      ],
+      maxTokens: 900,
+    });
+    assert.equal(reply, 'Eat more fish.', 'thought parts are dropped');
+    const c = m.calls[0];
+    assert.ok(c.url.endsWith(`/models/${GEMINI_MODELS[0]}:generateContent`));
+    assert.equal((c.init.headers as Record<string, string>)['x-goog-api-key'], 'AIzaTEST');
+    assert.ok(!c.url.includes('AIzaTEST'), 'key never in the URL');
+    const body = JSON.parse(String(c.init.body));
+    assert.equal(body.systemInstruction.parts[0].text, 'SYS');
+    assert.deepEqual(body.contents.map((x: { role: string }) => x.role), ['user', 'model', 'user']);
+  } finally {
+    m.restore();
+  }
+});
+
+test('Gemini falls back to the next free model when one is retired', async () => {
+  const m = mockFetch([
+    { status: 404, body: { error: { status: 'NOT_FOUND' } } },
+    { status: 200, body: { candidates: [{ content: { parts: [{ text: 'ok' }] } }] } },
+  ]);
+  try {
+    assert.equal(await callGemini('k', { system: 's', messages: [{ role: 'user', content: 'x' }], maxTokens: 5 }), 'ok');
+    assert.ok(m.calls[1].url.includes(GEMINI_MODELS[1]));
+  } finally {
+    m.restore();
+  }
+});
+
+test('Gemini errors become clear messages', async () => {
+  const cases: Array<[number, unknown, RegExp]> = [
+    [400, { error: { status: 'INVALID_ARGUMENT', message: 'API key not valid. Please pass a valid API key.' } }, /wasn’t accepted/],
+    [429, { error: { status: 'RESOURCE_EXHAUSTED', message: 'Quota exceeded' } }, /free limit/],
+    [503, { error: { status: 'UNAVAILABLE' } }, /busy/],
+  ];
+  for (const [status, body, re] of cases) {
+    const m = mockFetch([{ status, body }]);
+    try {
+      await assert.rejects(callGemini('k', { system: 's', messages: [{ role: 'user', content: 'x' }], maxTokens: 5 }), (e: Error) => re.test(e.message));
+    } finally {
+      m.restore();
+    }
+  }
 });

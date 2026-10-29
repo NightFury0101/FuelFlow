@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Activity, Goal, Sex, SpecialCircumstance, Targets, UnitPrefs } from '../lib/types';
 import { useStore } from '../lib/store';
 import { ACTIVITY, balanceCarbs, calculateTargets } from '../lib/targets';
 import { ageFromBirthDate, isValidDateKey, todayKey } from '../lib/date';
 import { backupJson, diaryCsv, progressCsv, uid } from '../lib/storage';
 import { displayWater, displayWeight, weightToKg, weightValue, waterToMl, ML_PER_FLOZ } from '../lib/units';
-import { getApiKey, isValidEndpoint, looksLikeKey, maskKey, setApiKey, testKey } from '../lib/ai';
+import { getApiKey, getProvider, isValidEndpoint, looksLikeKey, maskKey, PROVIDER_INFO, resolveAi, setApiKey, setProvider, testKey, type Provider } from '../lib/ai';
 import { BILLING_ENABLED } from '../lib/plans';
 import { Card, Field, NumberInput, Segmented, parseNum } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -360,30 +360,41 @@ function MealsSection() {
 function CoachSection() {
   const store = useStore();
   const p = store.profile!;
-  const [saved, setSaved] = useState<string | null>(() => getApiKey());
-  const [mode, setMode] = useState<'key' | 'server'>(() => (getApiKey() || !p.scannerEndpoint ? 'key' : 'server'));
+  type Mode = Provider | 'server';
+  const [saved, setSaved] = useState<Record<Provider, string | null>>(() => ({ gemini: getApiKey('gemini'), claude: getApiKey('claude') }));
+  const [active, setActive] = useState<Provider | null>(() => getProvider());
+  const [mode, setMode] = useState<Mode>(() => getProvider() ?? (getApiKey('claude') ? 'claude' : p.scannerEndpoint ? 'server' : 'gemini'));
   const [key, setKey] = useState('');
   const [show, setShow] = useState(false);
   const [url, setUrl] = useState(p.scannerEndpoint ?? '');
   const [status, setStatus] = useState<{ kind: 'idle' | 'testing' | 'ok' | 'fail'; text?: string }>({ kind: 'idle' });
   const validUrl = !url || isValidEndpoint(url);
-  const keyOk = looksLikeKey(key);
+  const provider: Provider | null = mode === 'server' ? null : mode;
+  const keyOk = provider ? looksLikeKey(provider, key) : false;
+  const savedKey = provider ? saved[provider] : null;
+  const using = resolveAi(p.scannerEndpoint);
+
+  const refresh = () => {
+    setSaved({ gemini: getApiKey('gemini'), claude: getApiKey('claude') });
+    setActive(getProvider());
+  };
 
   const saveKey = async () => {
+    if (!provider) return;
     setStatus({ kind: 'testing' });
-    const r = await testKey(key.trim());
+    const r = await testKey(provider, key.trim());
     if (!r.ok) return setStatus({ kind: 'fail', text: r.message });
-    setApiKey(key.trim());
-    setSaved(key.trim());
+    setApiKey(provider, key.trim());
+    refresh();
     setKey('');
     setStatus({ kind: 'ok', text: r.message });
-    store.showToast('AI connected');
+    store.showToast(`${PROVIDER_INFO[provider].name} connected`);
   };
 
   const testSaved = async () => {
-    if (!saved) return;
+    if (!provider || !savedKey) return;
     setStatus({ kind: 'testing' });
-    const r = await testKey(saved);
+    const r = await testKey(provider, savedKey);
     setStatus({ kind: r.ok ? 'ok' : 'fail', text: r.message });
   };
 
@@ -399,36 +410,87 @@ function CoachSection() {
     }
   };
 
+  const steps: Record<Provider, ReactNode> = {
+    gemini: (
+      <ol className="steps small">
+        <li>
+          Open{' '}
+          <a href={PROVIDER_INFO.gemini.console} target="_blank" rel="noreferrer" className="accent">
+            aistudio.google.com/apikey
+          </a>{' '}
+          and sign in with a Google account.
+        </li>
+        <li>
+          Tap <strong>Create API key</strong> and copy it. No card needed for the free tier.
+        </li>
+        <li>Paste it below and tap Connect.</li>
+      </ol>
+    ),
+    claude: (
+      <ol className="steps small">
+        <li>
+          Sign in at{' '}
+          <a href={PROVIDER_INFO.claude.console} target="_blank" rel="noreferrer" className="accent">
+            console.anthropic.com
+          </a>{' '}
+          and add a little credit under Billing.
+        </li>
+        <li>
+          Go to <strong>API keys → Create key</strong>, copy it.
+        </li>
+        <li>Paste it below and tap Connect.</li>
+      </ol>
+    ),
+  };
+
   return (
     <Card title="AI nutrition coach" icon="sparkles">
       <div className="form">
-        <Segmented
-          label="How to connect the AI"
+        {using && (
+          <p className="muted small">
+            Coach is using: <strong className="fg">{using.kind === 'server' ? 'your own server' : PROVIDER_INFO[using.provider].name}</strong>
+          </p>
+        )}
+        <Segmented<Mode>
+          label="Which AI to use"
           value={mode}
-          onChange={(v) => (setMode(v), setStatus({ kind: 'idle' }))}
+          onChange={(v) => (setMode(v), setStatus({ kind: 'idle' }), setKey(''))}
           options={[
-            { value: 'key', label: 'API key' },
+            { value: 'gemini', label: 'Gemini · free' },
+            { value: 'claude', label: 'Claude' },
             { value: 'server', label: 'Own server' },
           ]}
         />
 
-        {mode === 'key' ? (
-          saved ? (
+        {provider ? (
+          savedKey ? (
             <>
               <div className="key-row">
                 <Icon name="lock" size={16} />
                 <span>
-                  <strong>Claude connected</strong>
-                  <span className="muted small block">Key {maskKey(saved)} · stored on this device only</span>
+                  <strong>{PROVIDER_INFO[provider].name} connected</strong>
+                  <span className="muted small block">Key {maskKey(savedKey)} · stored on this device only</span>
                 </span>
               </div>
+              {active !== provider && (
+                <button
+                  className="btn btn-primary block"
+                  onClick={() => {
+                    setProvider(provider);
+                    refresh();
+                    store.showToast(`Coach now uses ${PROVIDER_INFO[provider].name}`);
+                  }}
+                >
+                  Use {PROVIDER_INFO[provider].name} for the coach
+                </button>
+              )}
               <div className="sheet-actions">
                 <button
                   className="btn btn-ghost danger"
                   onClick={() => {
-                    if (!window.confirm('Remove the API key from this device? The coach will stop working until you add one again.')) return;
-                    setApiKey(null);
-                    setSaved(null);
+                    if (!window.confirm(`Remove the ${PROVIDER_INFO[provider].name} key from this device?`)) return;
+                    setApiKey(provider, null);
+                    refresh();
                     setStatus({ kind: 'idle' });
                     store.showToast('API key removed');
                   }}
@@ -442,29 +504,18 @@ function CoachSection() {
             </>
           ) : (
             <>
-              <ol className="steps small">
-                <li>
-                  Sign in at{' '}
-                  <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" className="accent">
-                    console.anthropic.com
-                  </a>{' '}
-                  and add a little credit under Billing.
-                </li>
-                <li>
-                  Go to <strong>API keys → Create key</strong>, copy it.
-                </li>
-                <li>Paste it below and tap Connect.</li>
-              </ol>
-              <Field label="Claude API key" error={key && !keyOk ? 'API keys start with sk-ant-' : null}>
+              {steps[provider]}
+              <Field label={`${PROVIDER_INFO[provider].name} API key`} error={key && !keyOk ? (provider === 'claude' ? 'Claude keys start with sk-ant-' : 'Gemini keys start with AIza') : null}>
                 <div className="key-input">
                   <input
                     type={show ? 'text' : 'password'}
                     value={key}
                     onChange={(e) => (setKey(e.target.value.trim()), setStatus({ kind: 'idle' }))}
-                    placeholder="sk-ant-…"
+                    placeholder={PROVIDER_INFO[provider].placeholder}
                     autoComplete="off"
                     autoCapitalize="off"
                     spellCheck={false}
+                    aria-label={`${PROVIDER_INFO[provider].name} API key`}
                   />
                   <button type="button" className="link-btn" onClick={() => setShow((x) => !x)}>
                     {show ? 'Hide' : 'Show'}
@@ -479,7 +530,7 @@ function CoachSection() {
         ) : (
           <>
             <p className="muted small">
-              For when other people use your FuelFlow: a small Cloudflare server holds the key instead of each phone. Setup guide: <code>server/README.md</code>.
+              For when other people use your FuelFlow: a small Cloudflare server holds a Claude key instead of each phone. Setup guide: <code>server/README.md</code>.
             </p>
             <Field label="AI server URL" error={!validUrl ? 'Use an https:// address' : null}>
               <input type="url" inputMode="url" placeholder="https://fuelflow-coach.yourname.workers.dev" value={url} onChange={(e) => (setUrl(e.target.value.trim()), setStatus({ kind: 'idle' }))} />
@@ -499,13 +550,18 @@ function CoachSection() {
                 Save
               </button>
             </div>
-            {saved && <p className="muted small">An API key is also saved on this device and is used first.</p>}
+            {(saved.gemini || saved.claude) && <p className="muted small">An API key is also saved on this device and is used before the server.</p>}
           </>
         )}
         {status.kind !== 'idle' && <p className={'notice' + (status.kind === 'fail' ? ' warn' : status.kind === 'ok' ? ' ok' : '')}>{status.kind === 'testing' ? 'Testing…' : status.text}</p>}
-        {mode === 'key' && (
+        {provider === 'gemini' && (
           <p className="muted small">
-            Your key is kept only in this browser — not in backups, not on GitHub. Each question uses a small amount of your Anthropic credit, so set a monthly limit in the Anthropic console. Anyone using this phone’s browser could use the key.
+            Gemini’s free tier has daily limits, and Google may use free-tier conversations to improve its products. Your key is kept only in this browser — not in backups, not on GitHub.
+          </p>
+        )}
+        {provider === 'claude' && (
+          <p className="muted small">
+            Claude is pay-as-you-go — usually under 1 cent per question. Set a monthly limit in the Anthropic console. Your key is kept only in this browser — not in backups, not on GitHub.
           </p>
         )}
       </div>
