@@ -45,7 +45,7 @@ npm run typecheck
 
 ## Deploy (GitHub Pages)
 
-The workflow in `.github/workflows/deploy.yml` tests, builds and publishes on every push to `main`. To turn it on, go to **Settings → Pages → Source: GitHub Actions** once in the repo.
+The workflow in `.github/workflows/deploy.yml` tests and builds on every push to `main`, then publishes the result to the `gh-pages` branch. GitHub Pages serves that branch (**Settings → Pages → Deploy from a branch → `gh-pages` / root**).
 
 ## Project layout
 
