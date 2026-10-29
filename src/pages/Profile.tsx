@@ -5,8 +5,7 @@ import { ACTIVITY, balanceCarbs, calculateTargets } from '../lib/targets';
 import { ageFromBirthDate, isValidDateKey, todayKey } from '../lib/date';
 import { backupJson, diaryCsv, progressCsv, uid } from '../lib/storage';
 import { displayWater, displayWeight, weightToKg, weightValue, waterToMl, ML_PER_FLOZ } from '../lib/units';
-import { isValidEndpoint } from '../lib/scanner';
-import { getApiKey, looksLikeKey, maskKey, setApiKey, testKey } from '../lib/ai';
+import { getApiKey, isValidEndpoint, looksLikeKey, maskKey, setApiKey, testKey } from '../lib/ai';
 import { BILLING_ENABLED } from '../lib/plans';
 import { Card, Field, NumberInput, Segmented, parseNum } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -61,10 +60,10 @@ export function Profile() {
       <MealsSection />
       <div
         ref={(el) => {
-          refs.current.scanner = el;
+          refs.current.ai = el;
         }}
       >
-        <ScannerSection />
+        <CoachSection />
       </div>
 
       <Card title="FuelFlow Premium" icon="crown">
@@ -320,7 +319,7 @@ function MealsSection() {
   const store = useStore();
   const p = store.profile!;
   const [newName, setNewName] = useState('');
-  const used = new Set(store.data.entries.map((e) => e.meal));
+  const used = new Set([...store.data.entries, ...store.data.planned].map((e) => e.meal));
   return (
     <Card title="Meals" icon="utensils">
       <ul className="plain-list">
@@ -358,7 +357,7 @@ function MealsSection() {
   );
 }
 
-function ScannerSection() {
+function CoachSection() {
   const store = useStore();
   const p = store.profile!;
   const [saved, setSaved] = useState<string | null>(() => getApiKey());
@@ -401,7 +400,7 @@ function ScannerSection() {
   };
 
   return (
-    <Card title="AI scanner & coach" icon="sparkles">
+    <Card title="AI nutrition coach" icon="sparkles">
       <div className="form">
         <Segmented
           label="How to connect the AI"
@@ -427,7 +426,7 @@ function ScannerSection() {
                 <button
                   className="btn btn-ghost danger"
                   onClick={() => {
-                    if (!window.confirm('Remove the API key from this device? The scanner and coach will stop working until you add one again.')) return;
+                    if (!window.confirm('Remove the API key from this device? The coach will stop working until you add one again.')) return;
                     setApiKey(null);
                     setSaved(null);
                     setStatus({ kind: 'idle' });
@@ -483,7 +482,7 @@ function ScannerSection() {
               For when other people use your FuelFlow: a small Cloudflare server holds the key instead of each phone. Setup guide: <code>server/README.md</code>.
             </p>
             <Field label="AI server URL" error={!validUrl ? 'Use an https:// address' : null}>
-              <input type="url" inputMode="url" placeholder="https://fuelflow-scan.yourname.workers.dev" value={url} onChange={(e) => (setUrl(e.target.value.trim()), setStatus({ kind: 'idle' }))} />
+              <input type="url" inputMode="url" placeholder="https://fuelflow-coach.yourname.workers.dev" value={url} onChange={(e) => (setUrl(e.target.value.trim()), setStatus({ kind: 'idle' }))} />
             </Field>
             <div className="sheet-actions">
               <button className="btn btn-ghost" disabled={!url || !validUrl || status.kind === 'testing'} onClick={testServer}>
@@ -506,7 +505,7 @@ function ScannerSection() {
         {status.kind !== 'idle' && <p className={'notice' + (status.kind === 'fail' ? ' warn' : status.kind === 'ok' ? ' ok' : '')}>{status.kind === 'testing' ? 'Testing…' : status.text}</p>}
         {mode === 'key' && (
           <p className="muted small">
-            Your key is kept only in this browser — not in backups, not on GitHub. Each scan or question uses a small amount of your Anthropic credit, so set a monthly limit in the Anthropic console. Anyone using this phone’s browser could use the key.
+            Your key is kept only in this browser — not in backups, not on GitHub. Each question uses a small amount of your Anthropic credit, so set a monthly limit in the Anthropic console. Anyone using this phone’s browser could use the key.
           </p>
         )}
       </div>
@@ -524,7 +523,7 @@ function DataSection() {
   return (
     <Card title="Your data" icon="lock">
       <p className="muted small">
-        Everything is stored only in this browser on this device — there’s no account and nothing is sent to a server (except photos you choose to scan). Clearing browser data erases it, so export a backup now and then.
+        Everything is stored only in this browser on this device — there’s no account and nothing is sent to a server (except questions you ask the AI coach, if you connect it). Clearing browser data erases it, so export a backup now and then.
       </p>
       <p className="small">
         {d.entries.length} food entries · {d.weights.length} weigh-ins · {d.water.length} water entries

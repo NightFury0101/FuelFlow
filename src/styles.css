@@ -413,35 +413,11 @@ input[type='number']::-webkit-inner-spin-button { opacity: 0.4; }
 .mini-bar { height: 5px; border-radius: 9px; background: var(--track); margin-top: 6px; overflow: hidden; }
 .mini-bar span { display: block; height: 100%; border-radius: 9px; }
 
-/* ---------- Scan ---------- */
-.scan-hero { display: grid; place-items: center; padding: 18px 0 14px; }
-.scan-frame { width: 116px; height: 116px; border-radius: 30px; display: grid; place-items: center; color: var(--accent); background: radial-gradient(circle at 50% 40%, rgba(197, 244, 50, 0.16), transparent 70%); border: 1.5px solid rgba(197, 244, 50, 0.35); }
-.scan-setup h2 { font-size: 19px; text-align: center; margin-bottom: 8px; }
-.scan-setup p { text-align: center; margin-bottom: 18px; }
-.scan-pick p.center { margin: 0 0 16px; }
-.scan-pick .stack + p { margin-top: 14px; }
-.scan-photo { position: relative; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--border); background: var(--surface); }
-.scan-photo img { display: block; width: 100%; max-height: 52vh; object-fit: cover; }
-.scan-photo.working img { filter: brightness(0.65); }
-.scan-overlay { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding: 18px; font-weight: 600; }
-.scan-line { position: absolute; left: 6%; right: 6%; height: 2px; background: var(--accent); box-shadow: 0 0 18px 3px rgba(197, 244, 50, 0.6); animation: scanLine 1.8s ease-in-out infinite alternate; }
-@keyframes scanLine { from { top: 10%; } to { top: 86%; } }
-.scan-items { list-style: none; margin: 0; padding: 0; }
-.scan-item { padding: 12px 0; border-top: 1px solid var(--border); }
-.scan-item:first-child { border-top: 0; padding-top: 0; }
-.si-top { display: flex; align-items: center; gap: 8px; }
-.si-name { font-weight: 600; min-height: 40px !important; }
-.si-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
-.si-grams { width: 112px; }
-.si-kcal { flex: 1; font-size: 14px; color: var(--muted); }
-.si-kcal strong { color: var(--text); font-family: var(--display); font-size: 18px; }
-.conf { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 99px; white-space: nowrap; }
-.conf-high { background: var(--accent-soft); color: var(--accent); }
-.conf-medium { background: rgba(255, 209, 102, 0.12); color: var(--carbs); }
-.conf-low { background: rgba(255, 138, 101, 0.13); color: var(--protein); }
-.scan-questions ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
-.ss-total { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-.ss-total strong { font-family: var(--display); font-size: 22px; }
+/* ---------- Setup card (coach not connected) ---------- */
+.setup-hero { display: grid; place-items: center; padding: 18px 0 14px; }
+.setup-frame { width: 116px; height: 116px; border-radius: 30px; display: grid; place-items: center; color: var(--accent); background: radial-gradient(circle at 50% 40%, rgba(197, 244, 50, 0.16), transparent 70%); border: 1.5px solid rgba(197, 244, 50, 0.35); }
+.setup-card h2 { font-size: 19px; text-align: center; margin-bottom: 8px; }
+.setup-card p { text-align: center; margin-bottom: 18px; }
 
 /* ---------- Onboarding ---------- */
 .onboarding { min-height: 100dvh; display: flex; justify-content: center; padding: calc(var(--safe-t) + 20px) 20px calc(var(--safe-b) + 24px); background: radial-gradient(120% 60% at 50% -10%, rgba(197, 244, 50, 0.08), transparent 60%), var(--bg); }
@@ -553,3 +529,39 @@ input[type='number']::-webkit-inner-spin-button { opacity: 0.4; }
 .key-input .link-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
 .steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
 .steps strong { color: var(--text); }
+.bn-item.center .bn-label { color: var(--text); }
+.sn-log { margin: 0 4px 14px; }
+
+/* ---------- Meal planning & recipes ---------- */
+.pill-plan { margin-left: 8px; background: rgba(165, 148, 255, 0.14); color: var(--fat); vertical-align: middle; font-family: var(--font); }
+.plan-note { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--muted); padding: 10px 12px; border-radius: 12px; background: rgba(165, 148, 255, 0.07); border: 1px dashed rgba(165, 148, 255, 0.35); margin-bottom: 10px; }
+.plan-note svg { color: var(--fat); flex-shrink: 0; margin-top: 1px; }
+.page > .plan-note { margin-bottom: 0; }
+.logged-dot.plan { background: var(--fat); }
+.wday.ahead .dn { color: var(--muted); }
+.wday.ahead.on .dn { color: var(--text); }
+.ds-plan { margin-top: 8px; color: var(--fat); }
+.menu-scrim { position: fixed; inset: 0; z-index: 15; background: transparent; cursor: default; }
+.ms-tools .menu { z-index: 20; }
+.planned-block { margin-top: 8px; }
+.planned-head { display: flex; justify-content: space-between; align-items: center; padding-top: 6px; }
+.entry-list.planned { margin-top: 4px; }
+.planned-row { display: flex; align-items: center; gap: 8px; }
+.planned-row .entry { flex: 1; border-top: 1px dashed var(--border-strong); }
+.planned-row .entry-name, .planned-row .entry-kcal { color: var(--muted); }
+.eat-btn { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--border-strong); color: var(--faint); display: grid; place-items: center; flex-shrink: 0; transition: all 0.15s; }
+.eat-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.plan-count { color: var(--fat); }
+.recipe-total { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.recipe-total > div { display: flex; flex-direction: column; gap: 2px; padding: 11px 13px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); }
+.recipe-total strong { font-family: var(--display); font-size: 18px; }
+.recipe-note { margin-top: 10px; }
+.ing-main { flex: 1; min-width: 0; text-align: left; padding: 2px 0; }
+.ing-main:hover strong { color: var(--accent); }
+.tag-recipe { background: rgba(255, 209, 102, 0.12); color: var(--carbs); }
+
+/* Toast: full-width-capable, centred without shrink-wrapping; moves to the top while a sheet is open. */
+.toast { left: 16px; right: 16px; margin: 0 auto; width: fit-content; max-width: 440px; transform: none; animation: toastIn2 0.22s ease; }
+@keyframes toastIn2 { from { opacity: 0; translate: 0 8px; } }
+.sheet-open .toast { top: calc(var(--safe-t) + 12px); bottom: auto; z-index: 90; }
+@media (min-width: 960px) { .toast { left: 232px; right: 0; } }

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AppData, Food, FoodEntry, MealId, Nutrients, Profile, SavedMeal, WaterEntry, WeightEntry } from './types';
 import { loadData, normalizeData, saveData, STORAGE_KEY, uid } from './storage';
-import { scaleNutrients } from './nutrition';
+import { scaleNutrients, snapshotFood } from './nutrition';
 import { todayKey } from './date';
 
 export const DEFAULT_MEALS = [
@@ -10,6 +10,12 @@ export const DEFAULT_MEALS = [
   { id: 'dinner', name: 'Dinner' },
   { id: 'snacks', name: 'Snacks' },
 ];
+
+/** The meal that best fits the current time of day. */
+export function mealForNow(meals: Array<{ id: string }>, hour = new Date().getHours()): string {
+  const pick = hour < 11 ? 'breakfast' : hour < 15 ? 'lunch' : hour < 21 ? 'dinner' : 'snacks';
+  return meals.some((m) => m.id === pick) ? pick : meals[0]?.id ?? 'snacks';
+}
 
 export interface NewEntryInput {
   date: string;
@@ -35,6 +41,11 @@ interface Store {
   updateEntry(id: string, patch: Partial<Pick<FoodEntry, 'meal' | 'date' | 'quantity' | 'servingLabel' | 'amount'>> & { nutrients?: Nutrients }): void;
   deleteEntry(id: string): void;
   restoreEntries(entries: FoodEntry[]): void;
+  addPlanned(items: NewEntryInput[]): FoodEntry[];
+  deletePlanned(id: string): void;
+  restorePlanned(entries: FoodEntry[]): void;
+  /** Move planned items into the diary as eaten. Returns the new diary entries. */
+  eatPlanned(ids: string[]): FoodEntry[];
   addWater(ml: number, date?: string): WaterEntry;
   updateWater(id: string, ml: number): void;
   deleteWater(id: string): void;
@@ -92,6 +103,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
   const dismissToast = useCallback(() => setToast(null), []);
 
+  const makeEntries = (items: NewEntryInput[], prefix: string): FoodEntry[] => {
+    const now = Date.now();
+    return items.map((it, i) => {
+      const food = snapshotFood(it.food);
+      return {
+        id: uid(prefix),
+        date: it.date,
+        meal: it.meal,
+        createdAt: now + i,
+        food,
+        servingLabel: it.servingLabel,
+        quantity: it.quantity,
+        amount: it.amount,
+        nutrients: it.nutrientsOverride ?? scaleNutrients(food, it.amount),
+        ...(it.aiEstimated ? { aiEstimated: true } : {}),
+      };
+    });
+  };
+
   const pushRecent = (recents: Food[], foods: Food[]) => {
     const ids = new Set(foods.map((f) => f.id));
     return [...foods.filter((f) => f.source !== 'ai-estimate' && f.source !== 'manual'), ...recents.filter((r) => !ids.has(r.id))].slice(0, 30);
@@ -109,21 +139,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setProfile: (p) => setData((d) => ({ ...d, profile: p })),
       updateProfile: (patch) => setData((d) => (d.profile ? { ...d, profile: { ...d.profile, ...patch } } : d)),
       addEntries: (items) => {
-        const now = Date.now();
-        const created: FoodEntry[] = items.map((it, i) => ({
-          id: uid('e-'),
-          date: it.date,
-          meal: it.meal,
-          createdAt: now + i,
-          food: it.food,
-          servingLabel: it.servingLabel,
-          quantity: it.quantity,
-          amount: it.amount,
-          nutrients: it.nutrientsOverride ?? scaleNutrients(it.food, it.amount),
-          ...(it.aiEstimated ? { aiEstimated: true } : {}),
-        }));
-        setData((d) => ({ ...d, entries: [...d.entries, ...created], recents: pushRecent(d.recents, items.map((i) => i.food)) }));
+        const created = makeEntries(items, 'e-');
+        setData((d) => ({ ...d, entries: [...d.entries, ...created], recents: pushRecent(d.recents, items.map((i) => snapshotFood(i.food))) }));
         return created;
+      },
+      addPlanned: (items) => {
+        const created = makeEntries(items, 'p-');
+        setData((d) => ({ ...d, planned: [...d.planned, ...created] }));
+        return created;
+      },
+      deletePlanned: (id) => setData((d) => ({ ...d, planned: d.planned.filter((e) => e.id !== id) })),
+      restorePlanned: (entries) => setData((d) => ({ ...d, planned: [...d.planned.filter((e) => !entries.some((x) => x.id === e.id)), ...entries] })),
+      eatPlanned: (ids) => {
+        const now = Date.now();
+        const moving = data.planned.filter((p) => ids.includes(p.id));
+        const eaten = moving.map((p, i) => ({ ...p, id: uid('e-'), createdAt: now + i }));
+        setData((d) => ({ ...d, planned: d.planned.filter((p) => !ids.includes(p.id)), entries: [...d.entries, ...eaten] }));
+        return eaten;
       },
       updateEntry: (id, patch) =>
         setData((d) => ({

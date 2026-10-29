@@ -1,10 +1,10 @@
-// Connection to the AI (Claude) for the photo scanner and nutrition coach.
+// Connection to the AI (Claude) for the nutrition coach.
 //
 // Two ways to connect:
 //  • "key"    — the user pastes their own Anthropic API key. It is stored only in this browser
 //               (localStorage, separate from the diary data, never exported in backups or sent
 //               anywhere except api.anthropic.com). Simple, fine for personal use.
-//  • "server" — the user's own Cloudflare Worker (server/scan-worker.js) holds the key instead.
+//  • "server" — the user's own Cloudflare Worker (server/coach-worker.js) holds the key instead.
 //               Safer when other people use the app.
 
 import { safeLocalStorage } from './storage';
@@ -53,7 +53,7 @@ export class AiError extends Error {
   }
 }
 
-type Content = string | Array<{ type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }>;
+type Content = string;
 
 /** Call Claude directly from the browser with the user's own key. Returns the reply text. */
 export async function callClaude(key: string, opts: { system: string; messages: Array<{ role: 'user' | 'assistant'; content: Content }>; maxTokens: number; signal?: AbortSignal }): Promise<string> {
@@ -82,11 +82,10 @@ export async function callClaude(key: string, opts: { system: string; messages: 
     } catch {
       /* ignore */
     }
-    if (res.status === 401) throw new AiError('Your API key wasn’t accepted. Check it in Profile → AI scanner & coach.', false);
+    if (res.status === 401) throw new AiError('Your API key wasn’t accepted. Check it in Profile → AI nutrition coach.', false);
     if (res.status === 403) throw new AiError('This API key doesn’t have permission to use Claude.', false);
     if (res.status === 429) throw new AiError('Too many requests in a short time. Wait a minute and try again.');
     if (res.status === 529 || res.status === 503) throw new AiError('The AI is busy right now. Try again in a moment.');
-    if (res.status === 413) throw new AiError('That photo is too large.', false);
     if (res.status === 400 && /credit|balance|billing/i.test(msg)) throw new AiError('Your Anthropic account is out of credit. Add credit at console.anthropic.com.', false);
     throw new AiError(`The AI had a problem (error ${res.status}). Try again.`);
   }
@@ -114,8 +113,17 @@ export function extractJson(text: string): unknown {
 export async function testKey(key: string): Promise<{ ok: boolean; message: string }> {
   try {
     await callClaude(key, { system: 'Reply with OK.', messages: [{ role: 'user', content: 'Ping' }], maxTokens: 5 });
-    return { ok: true, message: 'Connected — the scanner and coach are ready.' };
+    return { ok: true, message: 'Connected — your nutrition coach is ready.' };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : 'Couldn’t connect.' };
+  }
+}
+
+export function isValidEndpoint(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' || u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+  } catch {
+    return false;
   }
 }

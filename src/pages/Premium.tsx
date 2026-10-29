@@ -39,7 +39,7 @@ export function Premium() {
             ))}
           </tbody>
         </table>
-        <p className="muted small">*Fair-use limits apply to AI scanning.</p>
+        <p className="muted small">*Fair-use limits apply to the AI coach.</p>
       </Card>
 
       <Card className="status-card">

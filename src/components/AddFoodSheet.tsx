@@ -1,20 +1,51 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Food, SavedMeal } from '../lib/types';
-import { useStore } from '../lib/store';
-import { searchReference } from '../lib/referenceFoods';
-import { searchOpenFoodFacts } from '../lib/foodSearch';
-import { scaleNutrients, macroWarning, sumNutrients } from '../lib/nutrition';
+import { useEffect, useState } from 'react';
+import type { Food, FoodEntry, RecipeIngredient, SavedMeal } from '../lib/types';
+import { useStore, type NewEntryInput } from '../lib/store';
+import { buildRecipeFood, formatAmount, macroWarning, scaleNutrients, sumNutrients } from '../lib/nutrition';
 import { uid } from '../lib/storage';
-import { EmptyState, Field, NumberInput, Segmented, Sheet, SourceTag, parseNum } from './ui';
+import { EmptyState, Field, MacroPills, NumberInput, Segmented, Sheet, parseNum } from './ui';
 import { Icon } from './Icon';
 import { ServingEditor, defaultServing, type ServingChoice } from './ServingEditor';
+import { FoodRow, SearchBox, SearchResults, useFoodSearch } from './FoodSearch';
 
-type View = { kind: 'browse' } | { kind: 'detail'; food: Food } | { kind: 'create'; edit?: Food } | { kind: 'quick' };
+type View =
+  | { kind: 'browse' }
+  | { kind: 'detail'; food: Food }
+  | { kind: 'create'; edit?: Food; name?: string }
+  | { kind: 'recipe'; edit?: Food }
+  | { kind: 'quick' };
 type Tab = 'recent' | 'favorites' | 'mine' | 'meals';
 
-export function AddFoodSheet({ open, onClose, date, meal, initialView = 'browse' }: { open: boolean; onClose: () => void; date: string; meal: string; initialView?: 'browse' | 'quick' | 'create' }) {
+/** Where added food goes: the diary (eaten) or the meal plan (not counted until eaten). */
+interface Sink {
+  plan: boolean;
+  add: (items: NewEntryInput[]) => FoodEntry[];
+  remove: (id: string) => void;
+}
+
+function useSink(plan: boolean): Sink {
+  const store = useStore();
+  return plan ? { plan, add: store.addPlanned, remove: store.deletePlanned } : { plan, add: store.addEntries, remove: store.deleteEntry };
+}
+
+export function AddFoodSheet({
+  open,
+  onClose,
+  date,
+  meal,
+  initialView = 'browse',
+  plan = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  date: string;
+  meal: string;
+  initialView?: 'browse' | 'quick' | 'create' | 'recipe';
+  plan?: boolean;
+}) {
   const store = useStore();
   const profile = store.profile!;
+  const sink = useSink(plan);
   const [view, setView] = useState<View>({ kind: initialView } as View);
   const [added, setAdded] = useState(0);
   const [currentMeal, setCurrentMeal] = useState(meal);
@@ -28,18 +59,44 @@ export function AddFoodSheet({ open, onClose, date, meal, initialView = 'browse'
   }, [open, initialView, meal]);
 
   const mealName = profile.meals.find((m) => m.id === currentMeal)?.name ?? 'Meal';
-  const title = view.kind === 'detail' ? 'Add food' : view.kind === 'create' ? (view.edit ? 'Edit food' : 'Create a food') : view.kind === 'quick' ? 'Quick add' : `Add to ${mealName}`;
+  const title =
+    view.kind === 'detail'
+      ? plan
+        ? 'Plan food'
+        : 'Add food'
+      : view.kind === 'create'
+        ? view.edit
+          ? 'Edit food'
+          : 'Create a food'
+        : view.kind === 'recipe'
+          ? view.edit
+            ? 'Edit recipe'
+            : 'New recipe'
+          : view.kind === 'quick'
+            ? 'Quick add'
+            : plan
+              ? `Plan ${mealName.toLowerCase()}`
+              : `Add to ${mealName}`;
+
+  const back = () => (initialView === 'browse' ? setView({ kind: 'browse' }) : onClose());
 
   return (
     <Sheet open={open} onClose={onClose} title={title}>
+      {plan && view.kind !== 'recipe' && view.kind !== 'create' && (
+        <p className="plan-note">
+          <Icon name="calendar" size={15} /> Planned food isn’t counted until you mark it as eaten.
+        </p>
+      )}
       {view.kind === 'browse' && (
         <Browse
           meal={currentMeal}
           date={date}
+          sink={sink}
           added={added}
           onPick={(food) => setView({ kind: 'detail', food })}
-          onCreate={() => setView({ kind: 'create' })}
-          onEditFood={(f) => setView({ kind: 'create', edit: f })}
+          onCreate={(name) => setView({ kind: 'create', name })}
+          onEditFood={(f) => setView(f.recipe ? { kind: 'recipe', edit: f } : { kind: 'create', edit: f })}
+          onNewRecipe={() => setView({ kind: 'recipe' })}
           onQuick={() => setView({ kind: 'quick' })}
           onAddedMeal={(n) => setAdded((a) => a + n)}
           onDone={onClose}
@@ -50,6 +107,7 @@ export function AddFoodSheet({ open, onClose, date, meal, initialView = 'browse'
           food={view.food}
           date={date}
           meal={currentMeal}
+          sink={sink}
           onBack={() => setView({ kind: 'browse' })}
           onAdded={(m) => {
             setCurrentMeal(m);
@@ -58,18 +116,14 @@ export function AddFoodSheet({ open, onClose, date, meal, initialView = 'browse'
           }}
         />
       )}
-      {view.kind === 'create' && (
-        <CreateFood
-          edit={view.edit}
-          onCancel={() => setView({ kind: 'browse' })}
-          onSaved={(f) => setView({ kind: 'detail', food: f })}
-        />
-      )}
+      {view.kind === 'create' && <CreateFood edit={view.edit} initialName={view.name} onCancel={back} onSaved={(f) => setView({ kind: 'detail', food: f })} />}
+      {view.kind === 'recipe' && <RecipeEditor edit={view.edit} onCancel={back} onSaved={(f) => setView({ kind: 'detail', food: f })} />}
       {view.kind === 'quick' && (
         <QuickAdd
           date={date}
           meal={currentMeal}
-          onCancel={() => (initialView === 'quick' ? onClose() : setView({ kind: 'browse' }))}
+          sink={sink}
+          onCancel={back}
           onAdded={() => {
             setAdded((a) => a + 1);
             if (initialView === 'quick') onClose();
@@ -81,144 +135,63 @@ export function AddFoodSheet({ open, onClose, date, meal, initialView = 'browse'
   );
 }
 
-function FoodRow({ food, onPick, trailing }: { food: Food; onPick: () => void; trailing?: React.ReactNode }) {
-  const s = defaultServing(food);
-  const n = scaleNutrients(food, s.amount);
-  return (
-    <li className="food-row">
-      <button className="food-row-main" onClick={onPick}>
-        <span className="fr-name">{food.name}</span>
-        <span className="fr-sub">
-          {food.brand && <span className="fr-brand">{food.brand} · </span>}
-          {s.label === food.baseUnit ? `${food.baseAmount} ${food.baseUnit}` : s.label} · {n.kcal} kcal
-        </span>
-        <SourceTag source={food.source} />
-      </button>
-      {trailing}
-    </li>
-  );
-}
-
-function Browse({ meal, date, added, onPick, onCreate, onEditFood, onQuick, onAddedMeal, onDone }: { meal: string; date: string; added: number; onPick: (f: Food) => void; onCreate: () => void; onEditFood: (f: Food) => void; onQuick: () => void; onAddedMeal: (n: number) => void; onDone: () => void }) {
+function Browse({
+  meal,
+  date,
+  sink,
+  added,
+  onPick,
+  onCreate,
+  onEditFood,
+  onNewRecipe,
+  onQuick,
+  onAddedMeal,
+  onDone,
+}: {
+  meal: string;
+  date: string;
+  sink: Sink;
+  added: number;
+  onPick: (f: Food) => void;
+  onCreate: (name?: string) => void;
+  onEditFood: (f: Food) => void;
+  onNewRecipe: () => void;
+  onQuick: () => void;
+  onAddedMeal: (n: number) => void;
+  onDone: () => void;
+}) {
   const store = useStore();
   const { data } = store;
   const [q, setQ] = useState('');
   const [tab, setTab] = useState<Tab>('recent');
-  const [remote, setRemote] = useState<{ status: 'idle' | 'loading' | 'done' | 'error'; foods: Food[]; error?: string }>({ status: 'idle', foods: [] });
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const t = setTimeout(() => inputRef.current?.focus(), 60);
-    return () => clearTimeout(t);
-  }, []);
-
-  const query = q.trim();
-  const local = useMemo(() => {
-    if (!query) return [];
-    const l = query.toLowerCase();
-    const mine = [...data.customFoods, ...data.favorites, ...data.recents].filter((f, i, a) => a.findIndex((x) => x.id === f.id) === i && f.name.toLowerCase().includes(l));
-    const ref = searchReference(query).filter((f) => !mine.some((m) => m.id === f.id));
-    return [...mine.slice(0, 6), ...ref];
-  }, [query, data.customFoods, data.favorites, data.recents]);
-
-  useEffect(() => {
-    if (query.length < 3) {
-      setRemote({ status: 'idle', foods: [] });
-      return;
-    }
-    if (!navigator.onLine) {
-      setRemote({ status: 'error', foods: [], error: 'You’re offline. Showing foods saved on this device.' });
-      return;
-    }
-    const ctrl = new AbortController();
-    const t = setTimeout(async () => {
-      setRemote({ status: 'loading', foods: [] });
-      try {
-        const foods = await searchOpenFoodFacts(query, ctrl.signal);
-        setRemote({ status: 'done', foods });
-      } catch (e) {
-        if ((e as Error).name === 'AbortError') return;
-        setRemote({ status: 'error', foods: [], error: 'The product database isn’t responding right now. Try again, or create the food yourself.' });
-      }
-    }, 450);
-    return () => {
-      clearTimeout(t);
-      ctrl.abort();
-    };
-  }, [query]);
+  const search = useFoodSearch(q);
 
   const addSavedMeal = (m: SavedMeal) => {
-    const created = store.addEntries(m.items.map((it) => ({ date, meal, food: it.food, servingLabel: it.servingLabel, quantity: it.quantity, amount: it.amount })));
+    const created = sink.add(m.items.map((it) => ({ date, meal, food: it.food, servingLabel: it.servingLabel, quantity: it.quantity, amount: it.amount })));
     onAddedMeal(created.length);
-    store.showToast(`Added “${m.name}”`, () => created.forEach((c) => store.deleteEntry(c.id)));
+    store.showToast(`${sink.plan ? 'Planned' : 'Added'} “${m.name}”`, () => created.forEach((c) => sink.remove(c.id)));
   };
 
   const tabList: Record<Tab, Food[]> = { recent: data.recents, favorites: data.favorites, mine: data.customFoods, meals: [] };
 
   return (
     <div className="browse">
-      <div className="search-box">
-        <Icon name="search" size={18} />
-        <input ref={inputRef} type="search" placeholder="Search foods, e.g. tuna, rice, banana" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search foods" enterKeyHint="search" />
-        {q && (
-          <button className="icon-btn sm" onClick={() => setQ('')} aria-label="Clear search">
-            <Icon name="x" size={16} />
-          </button>
-        )}
-      </div>
+      <SearchBox value={q} onChange={setQ} placeholder="Search foods, e.g. tuna, rice, banana" />
 
       <div className="browse-actions">
         <button className="chip" onClick={onQuick}>
-          <Icon name="flame" size={15} /> Quick add calories
+          <Icon name="flame" size={15} /> Quick add
         </button>
-        <button className="chip" onClick={onCreate}>
+        <button className="chip" onClick={() => onCreate()}>
           <Icon name="plus" size={15} /> Create food
+        </button>
+        <button className="chip" onClick={onNewRecipe}>
+          <Icon name="utensils" size={15} /> New recipe
         </button>
       </div>
 
-      {query ? (
-        <>
-          {local.length > 0 && (
-            <ul className="food-list" aria-label="Matching foods">
-              {local.map((f) => (
-                <FoodRow key={f.id} food={f} onPick={() => onPick(f)} />
-              ))}
-            </ul>
-          )}
-          {query.length >= 3 && (
-            <div className="remote">
-              <p className="list-label">Packaged products · Open Food Facts</p>
-              {remote.status === 'loading' && (
-                <div className="skeletons" aria-label="Searching">
-                  <div className="skeleton" />
-                  <div className="skeleton" />
-                  <div className="skeleton" />
-                </div>
-              )}
-              {remote.status === 'error' && <p className="notice">{remote.error}</p>}
-              {remote.status === 'done' && remote.foods.length === 0 && <p className="muted small pad">No products found for “{query}”.</p>}
-              {remote.status === 'done' && remote.foods.length > 0 && (
-                <ul className="food-list">
-                  {remote.foods.map((f) => (
-                    <FoodRow key={f.id} food={f} onPick={() => onPick(f)} />
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-          {local.length === 0 && remote.status !== 'loading' && (remote.status !== 'done' || remote.foods.length === 0) && (
-            <EmptyState
-              icon="search"
-              title={`No match for “${query}”`}
-              text={query.length < 3 ? 'Keep typing to search packaged products too.' : 'Create it once and it’ll be here next time.'}
-              action={
-                <button className="btn btn-secondary" onClick={onCreate}>
-                  Create “{query}”
-                </button>
-              }
-            />
-          )}
-        </>
+      {search.query ? (
+        <SearchResults search={search} onPick={onPick} onCreate={() => onCreate(search.query)} />
       ) : (
         <>
           <Segmented<Tab>
@@ -245,7 +218,13 @@ function Browse({ meal, date, added, onPick, onCreate, onEditFood, onQuick, onAd
                           {m.items.length} items · {t.kcal} kcal
                         </span>
                       </button>
-                      <button className="icon-btn sm" aria-label={`Delete saved meal ${m.name}`} onClick={() => store.deleteSavedMeal(m.id)}>
+                      <button
+                        className="icon-btn sm"
+                        aria-label={`Delete saved meal ${m.name}`}
+                        onClick={() => {
+                          if (window.confirm(`Delete the saved meal “${m.name}”?`)) store.deleteSavedMeal(m.id);
+                        }}
+                      >
                         <Icon name="trash" size={16} />
                       </button>
                     </li>
@@ -275,8 +254,21 @@ function Browse({ meal, date, added, onPick, onCreate, onEditFood, onQuick, onAd
           ) : (
             <EmptyState
               icon={tab === 'favorites' ? 'star' : tab === 'mine' ? 'utensils' : 'search'}
-              title={tab === 'recent' ? 'Search to log your first food' : tab === 'favorites' ? 'No favourites yet' : 'No custom foods yet'}
-              text={tab === 'recent' ? 'Foods you log show up here for quick re-adding.' : tab === 'favorites' ? 'Tap the star on any food to keep it here.' : 'Create foods for home cooking or products we don’t have.'}
+              title={tab === 'recent' ? 'Search to log your first food' : tab === 'favorites' ? 'No favourites yet' : 'No foods or recipes yet'}
+              text={
+                tab === 'recent'
+                  ? 'Foods you log show up here for quick re-adding.'
+                  : tab === 'favorites'
+                    ? 'Tap the star on any food to keep it here.'
+                    : 'Create foods for products we don’t have, or build a recipe from your own ingredients.'
+              }
+              action={
+                tab === 'mine' ? (
+                  <button className="btn btn-secondary" onClick={onNewRecipe}>
+                    New recipe
+                  </button>
+                ) : undefined
+              }
             />
           )}
         </>
@@ -285,7 +277,7 @@ function Browse({ meal, date, added, onPick, onCreate, onEditFood, onQuick, onAd
       {added > 0 && (
         <div className="added-bar">
           <span>
-            <Icon name="check" size={16} /> {added} added
+            <Icon name="check" size={16} /> {added} {sink.plan ? 'planned' : 'added'}
           </span>
           <button className="btn btn-primary sm" onClick={onDone}>
             Done
@@ -296,36 +288,42 @@ function Browse({ meal, date, added, onPick, onCreate, onEditFood, onQuick, onAd
   );
 }
 
-function Detail({ food, date, meal, onBack, onAdded }: { food: Food; date: string; meal: string; onBack: () => void; onAdded: (meal: string) => void }) {
+function Detail({ food, date, meal, sink, onBack, onAdded }: { food: Food; date: string; meal: string; sink: Sink; onBack: () => void; onAdded: (meal: string) => void }) {
   const store = useStore();
   const profile = store.profile!;
   const s = defaultServing(food);
   const [choice, setChoice] = useState<ServingChoice | null>({ servingLabel: s.label, quantity: 1, amount: s.amount, meal });
   const add = () => {
     if (!choice) return;
-    const [e] = store.addEntries([{ date, meal: choice.meal, food, servingLabel: choice.servingLabel, quantity: choice.quantity, amount: choice.amount }]);
-    store.showToast(`Added ${food.name}`, () => store.deleteEntry(e.id));
+    const [e] = sink.add([{ date, meal: choice.meal, food, servingLabel: choice.servingLabel, quantity: choice.quantity, amount: choice.amount }]);
+    store.showToast(`${sink.plan ? 'Planned' : 'Added'} ${food.name}`, () => sink.remove(e.id));
     onAdded(choice.meal);
   };
+  const mealName = profile.meals.find((m) => m.id === choice?.meal)?.name ?? 'diary';
   return (
     <div>
       <button className="back-link" onClick={onBack}>
         <Icon name="left" size={16} /> Back to search
       </button>
       <ServingEditor food={food} meals={profile.meals} initial={{ servingLabel: s.label, quantity: 1, amount: s.amount, meal }} favorite={store.isFavorite(food.id)} onToggleFavorite={() => store.toggleFavorite(food)} onChange={setChoice} />
+      {food.recipe && (
+        <p className="muted small recipe-note">
+          Recipe · makes {food.recipe.servings} serving{food.recipe.servings === 1 ? '' : 's'} · {food.recipe.ingredients.length} ingredient{food.recipe.ingredients.length === 1 ? '' : 's'}
+        </p>
+      )}
       <div className="sheet-actions">
         <button className="btn btn-primary block" disabled={!choice} onClick={add}>
-          Add to {profile.meals.find((m) => m.id === choice?.meal)?.name ?? 'diary'}
+          {sink.plan ? `Plan for ${mealName}` : `Add to ${mealName}`}
         </button>
       </div>
     </div>
   );
 }
 
-function CreateFood({ edit, onCancel, onSaved }: { edit?: Food; onCancel: () => void; onSaved: (f: Food) => void }) {
+function CreateFood({ edit, initialName, onCancel, onSaved }: { edit?: Food; initialName?: string; onCancel: () => void; onSaved: (f: Food) => void }) {
   const store = useStore();
   const per = edit ? (edit.baseUnit === 'serving' ? edit.nutrients : scaleNutrients(edit, edit.servings[0]?.amount ?? edit.baseAmount)) : null;
-  const [name, setName] = useState(edit?.name ?? '');
+  const [name, setName] = useState(edit?.name ?? initialName ?? '');
   const [brand, setBrand] = useState(edit?.brand ?? '');
   const [servingLabel, setServingLabel] = useState(edit?.servings[0]?.label ?? '1 serving');
   const [grams, setGrams] = useState(edit && edit.baseUnit === 'g' ? String(edit.servings[0]?.amount ?? '') : '');
@@ -398,6 +396,7 @@ function CreateFood({ edit, onCancel, onSaved }: { edit?: Food; onCancel: () => 
           <button
             className="btn btn-ghost danger"
             onClick={() => {
+              if (!window.confirm(`Delete “${edit.name}” from My foods? Past diary entries stay as they are.`)) return;
               store.deleteCustomFood(edit.id);
               store.showToast('Food deleted');
               onCancel();
@@ -414,7 +413,165 @@ function CreateFood({ edit, onCancel, onSaved }: { edit?: Food; onCancel: () => 
   );
 }
 
-function QuickAdd({ date, meal, onCancel, onAdded }: { date: string; meal: string; onCancel: () => void; onAdded: () => void }) {
+function RecipeEditor({ edit, onCancel, onSaved }: { edit?: Food; onCancel: () => void; onSaved: (f: Food) => void }) {
+  const store = useStore();
+  const [name, setName] = useState(edit?.name ?? '');
+  const [servings, setServings] = useState(String(edit?.recipe?.servings ?? 4));
+  const [notes, setNotes] = useState(edit?.recipe?.notes ?? '');
+  const [ingredients, setIngredients] = useState<Array<RecipeIngredient & { key: string }>>(() => (edit?.recipe?.ingredients ?? []).map((i) => ({ ...i, key: uid('ing-') })));
+  const [picking, setPicking] = useState<{ food?: Food; editKey?: string } | null>(null);
+  const [q, setQ] = useState('');
+  const [choice, setChoice] = useState<ServingChoice | null>(null);
+  const [tried, setTried] = useState(false);
+  const search = useFoodSearch(q, { excludeId: edit?.id });
+
+  const n = parseNum(servings);
+  const servingsOk = Number.isInteger(n) && n >= 1 && n <= 100;
+  const total = sumNutrients(ingredients.map((i) => ({ nutrients: scaleNutrients(i.food, i.amount) })));
+  const per = servingsOk ? { kcal: Math.round(total.kcal / n), protein: total.protein / n, carbs: total.carbs / n, fat: total.fat / n } : null;
+  const ok = name.trim() && servingsOk && ingredients.length > 0;
+
+  const save = () => {
+    setTried(true);
+    if (!ok) return;
+    const food = buildRecipeFood(
+      edit?.id ?? uid('recipe-'),
+      name.trim(),
+      n,
+      ingredients.map((i) => ({ food: i.food, servingLabel: i.servingLabel, quantity: i.quantity, amount: i.amount })),
+      notes.trim() || undefined,
+    );
+    store.saveCustomFood(food);
+    store.showToast(edit ? 'Recipe updated' : 'Recipe saved to My foods');
+    onSaved(food);
+  };
+
+  if (picking) {
+    if (picking.food) {
+      const f = picking.food;
+      const existing = picking.editKey ? ingredients.find((i) => i.key === picking.editKey) : undefined;
+      const s = defaultServing(f);
+      const initial = existing ? { servingLabel: existing.servingLabel, quantity: existing.quantity, amount: existing.amount, meal: '' } : { servingLabel: s.label, quantity: 1, amount: s.amount, meal: '' };
+      return (
+        <div>
+          <button className="back-link" onClick={() => setPicking(existing ? null : {})}>
+            <Icon name="left" size={16} /> {existing ? 'Back to recipe' : 'Back to search'}
+          </button>
+          <ServingEditor key={f.id + (picking.editKey ?? '')} food={f} meals={[]} hideMeal initial={initial} onChange={setChoice} />
+          <div className="sheet-actions">
+            <button
+              className="btn btn-primary block"
+              disabled={!choice}
+              onClick={() => {
+                const c = choice ?? initial;
+                const item = { key: picking.editKey ?? uid('ing-'), food: f, servingLabel: c.servingLabel, quantity: c.quantity, amount: c.amount };
+                setIngredients((list) => (picking.editKey ? list.map((i) => (i.key === picking.editKey ? item : i)) : [...list, item]));
+                setPicking(null);
+                setQ('');
+              }}
+            >
+              {existing ? 'Update ingredient' : 'Add to recipe'}
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="browse">
+        <button className="back-link" onClick={() => (setPicking(null), setQ(''))}>
+          <Icon name="left" size={16} /> Back to recipe
+        </button>
+        <SearchBox value={q} onChange={setQ} placeholder="Find an ingredient, e.g. rice, tuna, coconut" />
+        {search.query ? (
+          <SearchResults search={search} onPick={(food) => (setChoice(null), setPicking({ food }))} />
+        ) : (
+          <p className="muted small pad">Search the food list or your own foods. Weigh ingredients raw or cooked — just be consistent.</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="form">
+      <button className="back-link" onClick={onCancel}>
+        <Icon name="left" size={16} /> Back
+      </button>
+      <Field label="Recipe name" error={tried && !name.trim() ? 'Give the recipe a name' : null}>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Tuna curry (garudhiya style)" maxLength={60} />
+      </Field>
+      <Field label="Number of servings it makes" error={!servingsOk ? 'Enter a whole number from 1 to 100' : null}>
+        <NumberInput value={servings} onChange={setServings} step={1} min={1} ariaLabel="Servings" />
+      </Field>
+
+      <div>
+        <p className="list-label">Ingredients</p>
+        {ingredients.length === 0 ? (
+          <p className={'muted small pad' + (tried ? ' warn-text' : '')}>Add at least one ingredient.</p>
+        ) : (
+          <ul className="plain-list">
+            {ingredients.map((i) => (
+              <li key={i.key} className="plain-row">
+                <button className="ing-main" onClick={() => (setChoice(null), setPicking({ food: i.food, editKey: i.key }))}>
+                  <strong>{i.food.name}</strong>
+                  <span className="muted small block">
+                    {formatAmount(i)} · {scaleNutrients(i.food, i.amount).kcal} kcal
+                  </span>
+                </button>
+                <button className="icon-btn sm" aria-label={`Remove ${i.food.name}`} onClick={() => setIngredients((l) => l.filter((x) => x.key !== i.key))}>
+                  <Icon name="x" size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <button className="ghost-row" onClick={() => (setQ(''), setPicking({}))}>
+          <Icon name="plus" size={16} /> Add ingredient
+        </button>
+      </div>
+
+      {ingredients.length > 0 && (
+        <div className="recipe-total">
+          <div>
+            <span className="muted small">Whole recipe</span>
+            <strong>{total.kcal.toLocaleString()} kcal</strong>
+          </div>
+          {per && (
+            <div>
+              <span className="muted small">Per serving</span>
+              <strong className="accent">{per.kcal.toLocaleString()} kcal</strong>
+              <MacroPills p={per.protein} c={per.carbs} f={per.fat} />
+            </div>
+          )}
+        </div>
+      )}
+
+      <Field label="Notes (optional)">
+        <textarea rows={2} value={notes} maxLength={500} onChange={(e) => setNotes(e.target.value)} placeholder="Method, tips, where it’s from…" />
+      </Field>
+
+      <div className="sheet-actions">
+        {edit && (
+          <button
+            className="btn btn-ghost danger"
+            onClick={() => {
+              if (!window.confirm(`Delete the recipe “${edit.name}”? Past diary entries stay as they are.`)) return;
+              store.deleteCustomFood(edit.id);
+              store.showToast('Recipe deleted');
+              onCancel();
+            }}
+          >
+            Delete
+          </button>
+        )}
+        <button className="btn btn-primary grow" onClick={save}>
+          Save recipe
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function QuickAdd({ date, meal, sink, onCancel, onAdded }: { date: string; meal: string; sink: Sink; onCancel: () => void; onAdded: () => void }) {
   const store = useStore();
   const profile = store.profile!;
   const [name, setName] = useState('');
@@ -429,8 +586,8 @@ function QuickAdd({ date, meal, onCancel, onAdded }: { date: string; meal: strin
     if (!ok) return;
     const nutrients = { kcal: Math.round(k), protein: parseNum(p) || 0, carbs: parseNum(c) || 0, fat: parseNum(f) || 0 };
     const food: Food = { id: uid('manual-'), name: name.trim() || 'Quick add', source: 'manual', baseUnit: 'serving', baseAmount: 1, nutrients, servings: [{ label: '1 serving', amount: 1 }] };
-    const [e] = store.addEntries([{ date, meal: m, food, servingLabel: '1 serving', quantity: 1, amount: 1 }]);
-    store.showToast(`Added ${nutrients.kcal} kcal`, () => store.deleteEntry(e.id));
+    const [e] = sink.add([{ date, meal: m, food, servingLabel: '1 serving', quantity: 1, amount: 1 }]);
+    store.showToast(`${sink.plan ? 'Planned' : 'Added'} ${nutrients.kcal} kcal`, () => sink.remove(e.id));
     onAdded();
   };
   return (
@@ -467,7 +624,7 @@ function QuickAdd({ date, meal, onCancel, onAdded }: { date: string; meal: strin
           Cancel
         </button>
         <button className="btn btn-primary grow" disabled={!ok} onClick={add}>
-          Add
+          {sink.plan ? 'Plan' : 'Add'}
         </button>
       </div>
     </div>

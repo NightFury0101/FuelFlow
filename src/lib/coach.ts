@@ -1,6 +1,6 @@
 // FuelFlow AI nutrition coach — client side.
-// Like the scanner, the coach talks to the user's own private server (server/scan-worker.js, POST /chat),
-// so no AI key ever reaches the browser. Food-log data is only included when the user switches
+// The coach talks to Claude either directly with the user's own API key (kept on the device)
+// or through the user's private server (server/coach-worker.js, POST /chat). Food-log data is only included when the user switches
 // "Let the coach see my log" on, and only as a short summary built from real records.
 
 import type { AppData, Profile } from './types';
@@ -75,6 +75,11 @@ export function buildContext(profile: Profile, data: AppData, shareLog: boolean,
   } else {
     lines.push('Nothing logged yet today.');
   }
+  const planToday = data.planned.filter((e) => e.date === today);
+  if (planToday.length) {
+    const p = sumNutrients(planToday);
+    lines.push(`Planned but not yet eaten today (not counted above): ${planToday.map((e) => e.food.name).join(', ')} — about ${p.kcal} kcal.`);
+  }
 
   const week = summarize(dailyTotals(data.entries, addDays(today, -1), 7), profile.targets);
   if (week.loggedDays) {
@@ -136,7 +141,7 @@ export async function askCoach(ai: AiConfig, history: CoachMessage[], context: s
     throw new CoachError('Couldn’t reach the coach. Check your connection and try again.');
   }
   if (res.status === 429) throw new CoachError('The coach is getting a lot of questions. Wait a minute and try again.');
-  if (res.status === 404) throw new CoachError('Your server doesn’t have the coach yet. Update it with the latest server/scan-worker.js.');
+  if (res.status === 404) throw new CoachError('Your server doesn’t have the coach yet. Update it with the latest server/coach-worker.js.');
   if (!res.ok) throw new CoachError(`The coach had a problem (error ${res.status}). Try again in a moment.`);
   const j = (await res.json().catch(() => null)) as { reply?: unknown } | null;
   const reply = typeof j?.reply === 'string' ? j.reply.trim() : '';

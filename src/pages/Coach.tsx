@@ -122,15 +122,15 @@ export function Coach() {
       </header>
 
       {!ai ? (
-        <Card className="scan-setup">
-          <div className="scan-hero" aria-hidden="true">
-            <div className="scan-frame">
+        <Card className="setup-card">
+          <div className="setup-hero" aria-hidden="true">
+            <div className="setup-frame">
               <Icon name="sparkles" size={44} />
             </div>
           </div>
-          <h2>The coach isn’t connected yet</h2>
-          <p className="muted">The coach uses the same Claude API key as the photo scanner. Add it once in your profile and both start working.</p>
-          <Link to="/profile?section=scanner" className="btn btn-primary block">
+          <h2>Connect your nutrition coach</h2>
+          <p className="muted">Ask anything about food — meal ideas that fit your day, labels, cravings, eating out. Connect it once with your Claude API key; the key stays on this device.</p>
+          <Link to="/profile?section=ai" className="btn btn-primary block">
             Add API key
           </Link>
         </Card>

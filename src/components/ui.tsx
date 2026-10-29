@@ -13,10 +13,12 @@ export function Sheet({ open, onClose, title, children, footer, wide }: { open: 
     };
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
+    document.body.classList.add('sheet-open');
     requestAnimationFrame(() => ref.current?.focus());
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = '';
+      document.body.classList.remove('sheet-open');
       prev?.focus?.();
     };
   }, [open, onClose]);

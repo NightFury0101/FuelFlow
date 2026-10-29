@@ -19,6 +19,7 @@ export function emptyData(): AppData {
     favorites: [],
     savedMeals: [],
     recents: [],
+    planned: [],
   };
 }
 
@@ -54,6 +55,9 @@ export function normalizeData(raw: unknown): AppData {
   d.customFoods = arr<Food>(r.customFoods).filter(validFood);
   d.favorites = arr<Food>(r.favorites).filter(validFood);
   d.recents = arr<Food>(r.recents).filter(validFood).slice(0, 30);
+  d.planned = arr<FoodEntry>(r.planned).filter(
+    (e) => e && typeof e.id === 'string' && isValidDateKey(e.date) && validFood(e.food) && validNutrients(e.nutrients) && isNum(e.amount),
+  );
   d.savedMeals = arr<AppData['savedMeals'][number]>(r.savedMeals).filter((m) => m && typeof m.name === 'string' && Array.isArray(m.items));
   return d;
 }

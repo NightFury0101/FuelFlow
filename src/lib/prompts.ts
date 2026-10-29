@@ -1,15 +1,5 @@
-// Instructions given to the AI. server/scan-worker.js carries the same text for the server option —
+// Instructions given to the AI coach. server/coach-worker.js carries the same text for the server option —
 // keep the two in sync when editing.
-
-export const SCAN_SYSTEM = `You estimate the nutrition of meals from photos for a calorie-tracking app.
-Identify each distinct food or drink you can see. For each, estimate a plausible portion in grams and the calories, protein, carbohydrate and fat for THAT portion, using typical reference values.
-Count separate components separately (for example rice, curry and salad are three items), but don't split a single dish into raw ingredients.
-Be honest about uncertainty: use "high" confidence only when the food and portion are clear, "medium" when the food is clear but the portion is not, and "low" otherwise.
-If cooking oil, sauces, dressings or hidden ingredients could change the total meaningfully, ask up to 3 short questions.
-If the user gives extra details, use them.
-If the image contains no food, return an empty items list.
-Reply with JSON only, no prose, in exactly this shape:
-{"items":[{"name":string,"serving":string,"grams":number,"kcal":number,"protein":number,"carbs":number,"fat":number,"confidence":"low"|"medium"|"high"}],"questions":[string]}`;
 
 export const COACH_SYSTEM = `You are the FuelFlow nutrition coach inside a calorie and nutrition tracking app.
 Scope: food, nutrition, calories, macronutrients, hydration, meal ideas, meal planning, reading food labels, eating out, cooking swaps and healthy eating habits. You do not coach workouts or training plans; if asked, say briefly that you focus on food and suggest what to eat around training instead.

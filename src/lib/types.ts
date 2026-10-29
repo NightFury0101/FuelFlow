@@ -15,7 +15,7 @@ export type NutritionSource =
   | 'openfoodfacts' // Open Food Facts community database
   | 'custom' // food the user created
   | 'recipe' // calculated from the user's own ingredients
-  | 'ai-estimate' // estimated by the AI scanner, confirmed by the user
+  | 'ai-estimate' // from an earlier photo-scanner version; kept so old entries still display
   | 'manual'; // quick-add numbers typed by the user
 
 export type BaseUnit = 'g' | 'ml' | 'serving';
@@ -35,6 +35,20 @@ export interface Food {
   baseAmount: number; // nutrients describe this many baseUnits (usually 100 g/ml, or 1 serving)
   nutrients: Nutrients;
   servings: Serving[];
+  recipe?: RecipeData; // present when source === 'recipe'
+}
+
+export interface RecipeIngredient {
+  food: Food; // snapshot (without its own recipe data)
+  servingLabel: string;
+  quantity: number;
+  amount: number; // in food.baseUnit
+}
+
+export interface RecipeData {
+  servings: number; // how many portions the whole recipe makes
+  ingredients: RecipeIngredient[];
+  notes?: string;
 }
 
 export type MealId = string; // 'breakfast' | 'lunch' | 'dinner' | 'snacks' | user-defined
@@ -117,7 +131,7 @@ export interface Profile {
   meals: MealSlot[];
   onboarded: boolean;
   setupIncomplete: boolean; // user skipped body details
-  scannerEndpoint?: string; // the user's private AI server (scanner + coach)
+  scannerEndpoint?: string; // the user's private AI server for the coach (name kept for saved data)
   coachShareLog?: boolean; // opt-in: let the coach see a summary of the food log
   waterQuickAdds: number[]; // ml
   createdAt: number;
@@ -133,4 +147,5 @@ export interface AppData {
   favorites: Food[];
   savedMeals: SavedMeal[];
   recents: Food[];
+  planned: FoodEntry[]; // meal plan: never counted in totals until marked as eaten
 }

@@ -1,12 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scaleNutrients, sumNutrients, servingOptions, amountFor, macroWarning } from '../src/lib/nutrition';
+import { scaleNutrients, sumNutrients, servingOptions, amountFor, macroWarning, formatAmount } from '../src/lib/nutrition';
 import { bmrMifflin, calculateTargets, balanceCarbs } from '../src/lib/targets';
 import { addDays, ageFromBirthDate, isValidDateKey, rangeKeys, toDateKey } from '../src/lib/date';
 import { dailyTotals, summarize, loggingStreak, changeFromPrevious, changeOver, weeklyTrend } from '../src/lib/analytics';
 import { migrateLegacy, normalizeData, diaryCsv, emptyData } from '../src/lib/storage';
 import { mapOffProduct } from '../src/lib/foodSearch';
-import { parseScanResponse } from '../src/lib/scanner';
 import { searchReference, REFERENCE_FOODS } from '../src/lib/referenceFoods';
 import { lbToKg, kgToLb, displayWater } from '../src/lib/units';
 import type { Food, FoodEntry, WeightEntry } from '../src/lib/types';
@@ -181,16 +180,6 @@ test('Open Food Facts mapping rejects incomplete data', () => {
   assert.equal(f!.servings[0].amount, 40);
 });
 
-test('scan responses are validated and clamped', () => {
-  const r = parseScanResponse({ items: [{ name: 'Rice', grams: 150, kcal: '195', protein: 4, carbs: 42, fat: 0.4, confidence: 'HIGH' }, { name: '' }, { name: 'Weird', kcal: -50, confidence: 'certain' }], questions: ['Was oil used?'] });
-  assert.equal(r.items.length, 2);
-  assert.equal(r.items[0].kcal, 195);
-  assert.equal(r.items[0].confidence, 'high');
-  assert.equal(r.items[1].kcal, 0);
-  assert.equal(r.items[1].confidence, 'low');
-  assert.equal(parseScanResponse('garbage').items.length, 0);
-});
-
 test('reference foods are searchable and self-consistent', () => {
   assert.equal(searchReference('rice')[0].name, 'White rice, cooked');
   assert.equal(searchReference('').length, 0);
@@ -205,4 +194,52 @@ test('unit conversion round-trips', () => {
   assert.equal(displayWater(250, { weight: 'kg', height: 'cm', water: 'ml' }), '250 ml');
   assert.equal(displayWater(2000, { weight: 'kg', height: 'cm', water: 'ml' }), '2 L');
   assert.equal(displayWater(1500, { weight: 'kg', height: 'cm', water: 'ml' }), '1.5 L');
+});
+
+import { buildRecipeFood, snapshotFood } from '../src/lib/nutrition';
+
+test('recipe nutrition = sum of ingredients ÷ servings, loggable by weight when all in grams', () => {
+  const tuna = REFERENCE_FOODS.find((f) => f.id === 'ref:tuna-skipjack')!; // 132 kcal/100 g
+  const rice = REFERENCE_FOODS.find((f) => f.id === 'ref:rice-white')!; // 130 kcal/100 g
+  const r = buildRecipeFood('r1', 'Tuna rice', 2, [
+    { food: tuna, servingLabel: 'g', quantity: 200, amount: 200 },
+    { food: rice, servingLabel: 'g', quantity: 400, amount: 400 },
+  ]);
+  // total = 264 + 520 = 784 kcal → 392 per serving; total weight 600 g → 300 g per serving
+  assert.equal(r.nutrients.kcal, 392);
+  assert.equal(r.baseUnit, 'g');
+  assert.equal(r.baseAmount, 300);
+  assert.equal(r.source, 'recipe');
+  assert.equal(scaleNutrients(r, 150).kcal, 196, 'half a serving by weight');
+  assert.equal(r.recipe!.servings, 2);
+});
+
+test('recipe with non-gram ingredients is logged per serving', () => {
+  const bar: Food = { id: 'c', name: 'Bar', source: 'custom', baseUnit: 'serving', baseAmount: 1, nutrients: { kcal: 200, protein: 10, carbs: 20, fat: 8 }, servings: [{ label: '1 bar', amount: 1 }] };
+  const r = buildRecipeFood('r2', 'Bars', 4, [{ food: bar, servingLabel: '1 bar', quantity: 6, amount: 6 }]);
+  assert.equal(r.baseUnit, 'serving');
+  assert.equal(r.nutrients.kcal, 300);
+  assert.equal(r.nutrients.protein, 15);
+});
+
+test('diary snapshots drop recipe ingredient lists', () => {
+  const r = buildRecipeFood('r3', 'X', 1, [{ food: rice, servingLabel: '1 cup', quantity: 1, amount: 158 }]);
+  const s = snapshotFood(r);
+  assert.equal(s.recipe, undefined);
+  assert.equal(s.nutrients.kcal, r.nutrients.kcal);
+});
+
+test('meal plan items survive import validation', () => {
+  const d = normalizeData({ planned: [entry('2026-11-02', 300), { id: 'bad' }] });
+  assert.equal(d.planned.length, 1);
+});
+
+test('amount labels read naturally', () => {
+  const banana = REFERENCE_FOODS.find((f) => f.id === 'ref:banana')!;
+  assert.equal(formatAmount({ food: banana, servingLabel: '1 medium', quantity: 1, amount: 118 }), '1 medium · 118 g');
+  assert.equal(formatAmount({ food: banana, servingLabel: '1 medium', quantity: 2, amount: 236 }), '2 × 1 medium · 236 g');
+  assert.equal(formatAmount({ food: banana, servingLabel: 'g', quantity: 80, amount: 80 }), '80 g');
+  assert.equal(formatAmount({ food: banana, servingLabel: '100 g', quantity: 1, amount: 100 }), '100 g');
+  const r = buildRecipeFood('r', 'R', 2, [{ food: banana, servingLabel: 'g', quantity: 200, amount: 200 }]);
+  assert.equal(formatAmount({ food: r, servingLabel: r.servings[0].label, quantity: 1, amount: 100 }), '1 serving (100 g)');
 });

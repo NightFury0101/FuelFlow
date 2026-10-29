@@ -6,7 +6,7 @@
 
 export const BILLING_ENABLED = false;
 
-export type Feature = 'ai-scan' | 'advanced-analytics' | 'meal-planning' | 'custom-reports' | 'recipes';
+export type Feature = 'ai-coach' | 'advanced-analytics' | 'meal-planning' | 'custom-reports' | 'recipes';
 
 export interface PlanFeature {
   label: string;
@@ -18,7 +18,7 @@ export const PLAN_TABLE: PlanFeature[] = [
   { label: 'Food diary & manual logging', free: true, premium: true },
   { label: 'Calories & macros', free: true, premium: true },
   { label: 'Water & weight tracking', free: true, premium: true },
-  { label: 'AI food scanner', free: '3 scans / day', premium: 'Unlimited*' },
+  { label: 'AI nutrition coach', free: '10 questions / day', premium: 'Unlimited*' },
   { label: 'Analytics history', free: '30 days', premium: 'Full history' },
   { label: 'Meal planning', free: false, premium: true },
   { label: 'Recipes & custom reports', free: false, premium: true },

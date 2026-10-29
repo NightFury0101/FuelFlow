@@ -1,6 +1,6 @@
-// FuelFlow AI server (photo scanner + nutrition coach) — Cloudflare Worker.
-// Keeps the AI API key on the server. The FuelFlow app sends a compressed photo here,
-// this Worker asks a vision model to identify the foods, validates the answer and returns JSON.
+// FuelFlow AI nutrition coach — Cloudflare Worker (optional).
+// Use this instead of pasting an API key on each phone: the key stays on the server,
+// and only your FuelFlow site is allowed to call it.
 //
 // Secrets / variables (set in Cloudflare → Worker → Settings → Variables):
 //   ANTHROPIC_API_KEY   (secret, required)
@@ -9,19 +9,9 @@
 //
 // Endpoints:
 //   GET  /health → { ok: true, configured: boolean }
-//   POST /       → photo scan: body { image: "data:image/jpeg;base64,...", details?: string }
-//   POST /chat   → nutrition coach: body { messages: [{role, content}], context: string } → { reply }
+//   POST /chat   → body { messages: [{role, content}], context: string } → { reply }
 
-const MAX_BODY = 6 * 1024 * 1024; // ~4.5 MB image after base64
-const SYSTEM = `You estimate the nutrition of meals from photos for a calorie-tracking app.
-Identify each distinct food or drink you can see. For each, estimate a plausible portion in grams and the calories, protein, carbohydrate and fat for THAT portion, using typical reference values.
-Count separate components separately (for example rice, curry and salad are three items), but don't split a single dish into raw ingredients.
-Be honest about uncertainty: use "high" confidence only when the food and portion are clear, "medium" when the food is clear but the portion is not, and "low" otherwise.
-If cooking oil, sauces, dressings or hidden ingredients could change the total meaningfully, ask up to 3 short questions.
-If the user gives extra details, use them.
-If the image contains no food, return an empty items list.
-Reply with JSON only, no prose, in exactly this shape:
-{"items":[{"name":string,"serving":string,"grams":number,"kcal":number,"protein":number,"carbs":number,"fat":number,"confidence":"low"|"medium"|"high"}],"questions":[string]}`;
+const MAX_BODY = 64 * 1024;
 
 function cors(env, origin) {
   const allowed = env.ALLOWED_ORIGIN && origin === env.ALLOWED_ORIGIN ? origin : 'null';
@@ -80,12 +70,10 @@ export default {
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
     if (request.method === 'GET' && url.pathname === '/health') return json({ ok: true, configured: Boolean(env.ANTHROPIC_API_KEY) }, 200, headers);
-    if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405, headers);
+    if (request.method !== 'POST' || url.pathname !== '/chat') return json({ error: 'Not found' }, 404, headers);
     if (!env.ALLOWED_ORIGIN || origin !== env.ALLOWED_ORIGIN) return json({ error: 'Origin not allowed' }, 403, headers);
-    if (!env.ANTHROPIC_API_KEY) return json({ error: 'Scanner not configured' }, 503, headers);
-
-    const len = Number(request.headers.get('Content-Length') || 0);
-    if (len > MAX_BODY) return json({ error: 'Image too large' }, 413, headers);
+    if (!env.ANTHROPIC_API_KEY) return json({ error: 'Coach not configured' }, 503, headers);
+    if (Number(request.headers.get('Content-Length') || 0) > MAX_BODY) return json({ error: 'Request too large' }, 413, headers);
 
     let body;
     try {
@@ -93,62 +81,6 @@ export default {
     } catch {
       return json({ error: 'Invalid JSON' }, 400, headers);
     }
-    if (url.pathname === '/chat') return handleChat(body, env, headers);
-    if (url.pathname !== '/') return json({ error: 'Not found' }, 404, headers);
-
-    const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(body.image || ''));
-    if (!m) return json({ error: 'Expected a JPEG, PNG or WebP data URL' }, 400, headers);
-    if (m[2].length > MAX_BODY) return json({ error: 'Image too large' }, 413, headers);
-    const details = String(body.details || '').slice(0, 500);
-
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: env.MODEL || 'claude-sonnet-5-5',
-        max_tokens: 1200,
-        system: SYSTEM,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } },
-              { type: 'text', text: details ? `Extra details from the user: ${details}` : 'Estimate this meal.' },
-            ],
-          },
-        ],
-      }),
-    });
-
-    if (res.status === 429) return json({ error: 'Rate limited' }, 429, headers);
-    if (!res.ok) {
-      // Log status only — never the image or the key.
-      console.log('AI provider error', res.status);
-      return json({ error: 'AI provider error' }, 502, headers);
-    }
-    const data = await res.json();
-    const text = (data.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    let parsed;
-    try {
-      parsed = JSON.parse(text.slice(start, end + 1));
-    } catch {
-      return json({ error: 'Could not read the AI response' }, 502, headers);
-    }
-    // The app validates again, but don't forward anything unexpected.
-    const num = (v, max) => Math.min(max, Math.max(0, Number(v) || 0));
-    const items = (Array.isArray(parsed.items) ? parsed.items : []).slice(0, 12).map((i) => ({
-      name: String(i.name || '').slice(0, 80),
-      serving: String(i.serving || '').slice(0, 60),
-      grams: num(i.grams, 3000),
-      kcal: num(i.kcal, 5000),
-      protein: num(i.protein, 500),
-      carbs: num(i.carbs, 800),
-      fat: num(i.fat, 500),
-      confidence: ['low', 'medium', 'high'].includes(i.confidence) ? i.confidence : 'low',
-    }));
-    const questions = (Array.isArray(parsed.questions) ? parsed.questions : []).slice(0, 3).map((q) => String(q).slice(0, 200));
-    return json({ items, questions }, 200, headers);
+    return handleChat(body, env, headers);
   },
 };

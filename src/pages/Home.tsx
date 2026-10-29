@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useStore } from '../lib/store';
+import { useStore, mealForNow } from '../lib/store';
 import { entriesForDay, sumNutrients } from '../lib/nutrition';
 import { greeting, todayKey, formatShort } from '../lib/date';
 import { dailyInsights } from '../lib/insights';
@@ -34,12 +34,7 @@ export function Home() {
   const latest = weights[weights.length - 1];
   const change = changeFromPrevious(weights);
 
-  const defaultMeal = () => {
-    const h = new Date().getHours();
-    const ids = profile.meals.map((m) => m.id);
-    const pick = h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 21 ? 'dinner' : 'snacks';
-    return ids.includes(pick) ? pick : ids[0];
-  };
+  const defaultMeal = () => mealForNow(profile.meals);
 
   const dateLabel = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -121,13 +116,13 @@ export function Home() {
       )}
 
       <nav className="quick" aria-label="Quick actions">
-        <button className="quick-btn primary" onClick={() => navigate('/scan')}>
-          <Icon name="camera" size={20} />
-          <span>Scan</span>
-        </button>
-        <button className="quick-btn" onClick={() => setAdd({ meal: defaultMeal(), view: 'browse' })}>
+        <button className="quick-btn primary" onClick={() => setAdd({ meal: defaultMeal(), view: 'browse' })}>
           <Icon name="search" size={20} />
-          <span>Search</span>
+          <span>Log food</span>
+        </button>
+        <button className="quick-btn" onClick={() => setAdd({ meal: defaultMeal(), view: 'quick' })}>
+          <Icon name="flame" size={20} />
+          <span>Quick add</span>
         </button>
         <button className="quick-btn" onClick={() => setWaterOpen(true)}>
           <Icon name="drop" size={20} />
@@ -151,12 +146,16 @@ export function Home() {
         <ul className="meal-list">
           {profile.meals.map((m) => {
             const list = entries.filter((e) => e.meal === m.id);
+            const planCount = store.data.planned.filter((e) => e.date === today && e.meal === m.id).length;
             const mt = sumNutrients(list);
             return (
               <li key={m.id} className="meal-row">
                 <Link to={`/diary?date=${today}&meal=${m.id}`} className="meal-row-main">
                   <span className="meal-name">{m.name}</span>
-                  <span className="meal-items muted small">{list.length ? list.map((e) => e.food.name).join(', ') : 'Nothing logged'}</span>
+                  <span className="meal-items muted small">
+                    {list.length ? list.map((e) => e.food.name).join(', ') : planCount ? '' : 'Nothing logged'}
+                    {planCount > 0 && <span className="plan-count">{list.length ? ' · ' : ''}{planCount} planned</span>}
+                  </span>
                 </Link>
                 <span className="meal-kcal">{list.length ? `${mt.kcal}` : ''}</span>
                 <button className="add-round" onClick={() => setAdd({ meal: m.id, view: 'browse' })} aria-label={`Add food to ${m.name}`}>

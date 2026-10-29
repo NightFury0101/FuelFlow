@@ -1,4 +1,4 @@
-import type { Food, FoodEntry, Nutrients, Serving } from './types';
+import type { Food, FoodEntry, Nutrients, RecipeIngredient, Serving } from './types';
 
 export const ZERO: Nutrients = { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 };
 
@@ -70,6 +70,40 @@ export function formatAmount(entry: Pick<FoodEntry, 'quantity' | 'servingLabel' 
   const q = Math.round(entry.quantity * 100) / 100;
   const unit = entry.food.baseUnit;
   if (entry.servingLabel === unit) return `${q} ${unit}`;
-  const base = unit === 'serving' ? '' : ` · ${Math.round(entry.amount)} ${unit}`;
-  return `${q} × ${entry.servingLabel}${base}`;
+  const label = q === 1 ? entry.servingLabel : `${q} × ${entry.servingLabel}`;
+  // Skip the weight when it adds nothing ("1 serving (300 g)" already says it).
+  const labelHasWeight = /\d\s?(g|ml)\b/.test(entry.servingLabel);
+  const base = unit === 'serving' || (q === 1 && labelHasWeight) ? '' : ` · ${Math.round(entry.amount)} ${unit}`;
+  return `${label}${base}`;
+}
+
+/** Strip recipe ingredient lists from a food snapshot (keeps diary entries small). */
+export function snapshotFood(food: Food): Food {
+  if (!food.recipe) return food;
+  const { recipe: _r, ...rest } = food;
+  return rest;
+}
+
+/**
+ * Turn a recipe into a loggable food. Nutrition is the sum of the ingredients divided by servings.
+ * When every ingredient is measured in grams, the recipe can also be logged by weight.
+ */
+export function buildRecipeFood(id: string, name: string, servings: number, ingredients: RecipeIngredient[], notes?: string): Food {
+  const portions = Math.max(1, servings);
+  const total = sumNutrients(ingredients.map((i) => ({ nutrients: scaleNutrients(i.food, i.amount) })));
+  const allGrams = ingredients.length > 0 && ingredients.every((i) => i.food.baseUnit === 'g');
+  const totalGrams = allGrams ? ingredients.reduce((s, i) => s + i.amount, 0) : 0;
+  const perServing: Nutrients = {
+    kcal: Math.round(total.kcal / portions),
+    protein: Math.round((total.protein / portions) * 10) / 10,
+    carbs: Math.round((total.carbs / portions) * 10) / 10,
+    fat: Math.round((total.fat / portions) * 10) / 10,
+    fiber: Math.round(((total.fiber || 0) / portions) * 10) / 10,
+  };
+  const recipe = { servings: portions, ingredients: ingredients.map((i) => ({ ...i, food: snapshotFood(i.food) })), ...(notes ? { notes } : {}) };
+  if (allGrams && totalGrams > 0) {
+    const portionGrams = Math.round(totalGrams / portions);
+    return { id, name, source: 'recipe', baseUnit: 'g', baseAmount: portionGrams, nutrients: perServing, servings: [{ label: `1 serving (${portionGrams} g)`, amount: portionGrams }], recipe };
+  }
+  return { id, name, source: 'recipe', baseUnit: 'serving', baseAmount: 1, nutrients: perServing, servings: [{ label: '1 serving', amount: 1 }], recipe };
 }

@@ -23,6 +23,7 @@ export function ServingEditor({
   favorite,
   onToggleFavorite,
   onChange,
+  hideMeal,
 }: {
   food: Food;
   meals: MealSlot[];
@@ -30,6 +31,7 @@ export function ServingEditor({
   favorite?: boolean;
   onToggleFavorite?: () => void;
   onChange: (c: ServingChoice | null) => void;
+  hideMeal?: boolean;
 }) {
   const options = useMemo(() => servingOptions(food), [food]);
   const [label, setLabel] = useState(initial.servingLabel);
@@ -127,6 +129,7 @@ export function ServingEditor({
         </p>
       )}
 
+      {!hideMeal && (
       <Field label="Meal">
         <select
           value={meal}
@@ -142,6 +145,7 @@ export function ServingEditor({
           ))}
         </select>
       </Field>
+      )}
 
       <p className="per-base muted small">
         Per {food.baseUnit === 'serving' ? (food.servings[0]?.label ?? 'serving') : `${food.baseAmount} ${food.baseUnit}`}: {food.nutrients.kcal} kcal ·{' '}
