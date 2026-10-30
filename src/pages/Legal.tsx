@@ -1,10 +1,14 @@
 import type { ReactNode } from 'react';
 import { Icon } from '../components/Icon';
+import { Link } from '../router';
 
 // Keep these accurate when the app changes. Last reviewed for: on-device storage, optional
 // Firebase accounts, optional AI coach with the user's own Gemini/Claude key, Open Food Facts search.
 export const LEGAL_UPDATED = '30 October 2026';
 const CONTACT_URL = 'https://github.com/NightFury0101/FuelFlow/issues';
+/** Support email shown on the Help & support page. App Store reviewers expect a way to reach you;
+ *  set this to an address you check (e.g. 'support@yourdomain.com'). null = GitHub page only. */
+export const SUPPORT_EMAIL: string | null = null;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -157,6 +161,86 @@ export function Terms() {
         <p>We may update these terms. We’ll change the date above and tell you in the app about important changes. These terms are governed by the laws of the Republic of Maldives.</p>
       </Section>
       <Contact />
+    </div>
+  );
+}
+
+function Faq({ q, children }: { q: string; children: ReactNode }) {
+  return (
+    <details className="faq">
+      <summary>{q}</summary>
+      <div className="faq-body">{children}</div>
+    </details>
+  );
+}
+
+/** Help & support — public page, also used as the App Store “Support URL” (…/#/support). */
+export function Support() {
+  return (
+    <div className="page legal">
+      <Back />
+      <header>
+        <h1>Help &amp; support</h1>
+        <p className="muted">Answers to common questions, and how to reach us.</p>
+      </header>
+
+      <Section title="Contact us">
+        {SUPPORT_EMAIL ? (
+          <p>
+            Email{' '}
+            <a className="accent" href={`mailto:${SUPPORT_EMAIL}`}>
+              {SUPPORT_EMAIL}
+            </a>{' '}
+            — we usually reply within two working days.
+          </p>
+        ) : null}
+        <p>
+          Report a problem or suggest a feature on{' '}
+          <a className="accent" href={CONTACT_URL} target="_blank" rel="noreferrer">
+            our help page
+          </a>
+          .
+        </p>
+      </Section>
+
+      <Section title="Common questions">
+        <Faq q="Is FuelFlow free?">
+          <p>Yes. Every feature is free, there are no ads, and nothing can be bought in the app. The AI coach uses your own free Gemini key or a pay-as-you-go Claude key, which you pay the AI company for directly (Gemini’s free tier costs nothing).</p>
+        </Faq>
+        <Faq q="Where is my data stored?">
+          <p>On your phone. If you create an account, a copy is also backed up to your private account so it syncs across your devices. Nobody else can read it.</p>
+        </Faq>
+        <Faq q="How do I back up or move my data?">
+          <p>Go to Profile → Your data → Download full backup. To bring it back, use Restore from backup on the new device. Creating an account does this automatically.</p>
+        </Faq>
+        <Faq q="How are my calorie and protein targets worked out?">
+          <p>From your age, height, weight, activity and goal using the Mifflin–St Jeor formula, with a safe pace of change. You can change them in Profile → Daily targets. They’re estimates, not medical advice.</p>
+        </Faq>
+        <Faq q="How do I set up the AI coach?">
+          <p>Go to Profile → AI nutrition coach, choose Gemini (free) or Claude, and paste your key. The key stays on your device. Your diary is only shared with the coach if you turn that on.</p>
+        </Faq>
+        <Faq q="Does it work offline?">
+          <p>Yes. You can log food, water and weight without a connection. Food search, the AI coach and account sync need the internet and catch up when you’re back online.</p>
+        </Faq>
+        <Faq q="How do I delete my account?">
+          <p>Go to Profile → Account &amp; sync → Delete my account, and confirm with your password. This permanently deletes the account and everything in it. To erase data without an account, use Profile → Your data → Delete all my data.</p>
+        </Faq>
+        <Faq q="Is FuelFlow medical advice?">
+          <p>No. FuelFlow gives estimates for general wellbeing. If you’re under 18, pregnant or breastfeeding, or have a medical condition, please speak to a doctor or registered dietitian before changing what you eat.</p>
+        </Faq>
+      </Section>
+
+      <p className="muted small">
+        See also our{' '}
+        <Link to="/privacy" className="accent">
+          privacy policy
+        </Link>{' '}
+        and{' '}
+        <Link to="/terms" className="accent">
+          terms of use
+        </Link>
+        .
+      </p>
     </div>
   );
 }

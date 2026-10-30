@@ -2,13 +2,15 @@
   "name": "fuelflow",
   "version": "0.1.0",
   "private": true,
-  "description": "FuelFlow — calorie counter, nutrition tracker and AI meal scanner. Eat Smarter. Track Better. Become Stronger.",
+  "description": "FuelFlow \u2014 calorie counter and nutrition tracker with an AI nutrition coach. Eat Smarter. Track Better. Become Stronger.",
   "type": "module",
   "scripts": {
     "dev": "node build.mjs --serve",
     "build": "node build.mjs",
     "test": "tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "ios:prepare": "bash scripts/ios-prepare.sh",
+    "ios:open": "npx cap open ios"
   },
   "dependencies": {
     "react": "^19.2.0",

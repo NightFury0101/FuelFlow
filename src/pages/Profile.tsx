@@ -6,6 +6,7 @@ import { ageFromBirthDate, isValidDateKey, todayKey } from '../lib/date';
 import { backupJson, diaryCsv, progressCsv, uid } from '../lib/storage';
 import { displayWater, displayWeight, weightToKg, weightValue, waterToMl, ML_PER_FLOZ } from '../lib/units';
 import { getApiKey, getProvider, isValidEndpoint, looksLikeKey, maskKey, PROVIDER_INFO, resolveAi, setApiKey, setProvider, testKey, type Provider } from '../lib/ai';
+import { isNativeApp, showPremium } from '../lib/platform';
 import { BILLING_ENABLED } from '../lib/plans';
 import { Card, Field, NumberInput, Segmented, parseNum } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -15,6 +16,16 @@ import { AuthSheet } from '../components/AuthSheet';
 
 function download(name: string, text: string, type: string) {
   const blob = new Blob([text], { type });
+  // Inside the iPhone/Android app there's no browser download bar, so hand the file to the
+  // system share sheet instead (Save to Files, AirDrop, email…).
+  if (isNativeApp()) {
+    const file = new File([blob], name, { type });
+    const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+    if (nav.share && nav.canShare?.({ files: [file] })) {
+      nav.share({ files: [file], title: name }).catch(() => undefined);
+      return;
+    }
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -75,12 +86,14 @@ export function Profile() {
         <CoachSection />
       </div>
 
+      {showPremium() && (
       <Card title="FuelFlow Premium" icon="crown">
         <p className="muted small">{BILLING_ENABLED ? 'Manage your subscription.' : 'You’re on the free plan. Every feature is currently available while billing isn’t set up.'}</p>
         <Link to="/premium" className="btn btn-secondary sm">
           See plans
         </Link>
       </Card>
+      )}
 
       <DataSection />
 
@@ -93,6 +106,10 @@ export function Profile() {
         ·{' '}
         <Link to="/terms" className="accent">
           Terms of use
+        </Link>{' '}
+        ·{' '}
+        <Link to="/support" className="accent">
+          Help &amp; support
         </Link>
       </p>
     </div>
@@ -732,12 +749,12 @@ function CoachSection() {
         {status.kind !== 'idle' && <p className={'notice' + (status.kind === 'fail' ? ' warn' : status.kind === 'ok' ? ' ok' : '')}>{status.kind === 'testing' ? 'Testing…' : status.text}</p>}
         {provider === 'gemini' && (
           <p className="muted small">
-            Gemini’s free tier has daily limits, and Google may use free-tier conversations to improve its products. Your key is kept only in this browser — not in backups, not on GitHub.
+            Gemini’s free tier has daily limits, and Google may use free-tier conversations to improve its products. Your key is kept only on this device — not in backups, not on GitHub.
           </p>
         )}
         {provider === 'claude' && (
           <p className="muted small">
-            Claude is pay-as-you-go — usually under 1 cent per question. Set a monthly limit in the Anthropic console. Your key is kept only in this browser — not in backups, not on GitHub.
+            Claude is pay-as-you-go — usually under 1 cent per question. Set a monthly limit in the Anthropic console. Your key is kept only on this device — not in backups, not on GitHub.
           </p>
         )}
       </div>
@@ -757,7 +774,9 @@ function DataSection() {
       <p className="muted small">
         {store.cloud.account
           ? 'Your data is on this phone and backed up to your account. AI coach keys and chats stay on this phone only.'
-          : 'Everything is stored only in this browser on this device — nothing is sent to a server (except questions you ask the AI coach, if you connect it). Clearing browser data erases it, so create an account or export a backup now and then.'}
+          : isNativeApp()
+            ? 'Everything is stored only in the app on this phone — nothing is sent to a server (except questions you ask the AI coach, if you connect it). Deleting the app erases it, so create an account or export a backup now and then.'
+            : 'Everything is stored only in this browser on this device — nothing is sent to a server (except questions you ask the AI coach, if you connect it). Clearing browser data erases it, so create an account or export a backup now and then.'}
       </p>
       <p className="small">
         {d.entries.length} food entries · {d.weights.length} weigh-ins · {d.water.length} water entries

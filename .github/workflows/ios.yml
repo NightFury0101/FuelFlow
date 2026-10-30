@@ -1,0 +1,41 @@
+name: iOS app check
+
+# Builds the iPhone app on a Mac in the cloud on every push to main (free for public repos).
+# It proves the app compiles for iPhone and saves the ready Xcode project as a download
+# ("FuelFlow-ios-project" under the run's Artifacts). Uploading to the App Store still needs
+# your Apple Developer account — see IOS.md.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ios
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
+      - run: npm run ios:prepare
+      - name: Build for the iPhone simulator (no signing needed)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 25
+          test "${PIPESTATUS[0]}" -eq 0
+      - name: Package the Xcode project
+        run: zip -qry FuelFlow-ios-project.zip ios capacitor.config.json resources -x 'ios/App/build/*' 'ios/DerivedData/*'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FuelFlow-ios-project
+          path: FuelFlow-ios-project.zip
+          retention-days: 30

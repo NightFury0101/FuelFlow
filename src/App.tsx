@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { StoreProvider, useStore, mealForNow } from './lib/store';
 import { todayKey } from './lib/date';
+import { showPremium } from './lib/platform';
 import { applyTheme, resolveTheme } from './lib/theme';
 import { AddFoodSheet } from './components/AddFoodSheet';
 import { Link, useRoute } from './router';
@@ -25,6 +26,7 @@ const Coach = lazy(() => loaders.coach().then((m) => ({ default: m.Coach })));
 const Premium = lazy(() => loaders.premium().then((m) => ({ default: m.Premium })));
 const Privacy = lazy(() => loaders.legal().then((m) => ({ default: m.Privacy })));
 const Terms = lazy(() => loaders.legal().then((m) => ({ default: m.Terms })));
+const Support = lazy(() => loaders.legal().then((m) => ({ default: m.Support })));
 
 function preloadScreens() {
   const go = () => Object.values(loaders).forEach((load) => load().catch(() => undefined));
@@ -106,16 +108,17 @@ function Shell() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    const titles: Record<string, string> = { '/': 'Home', '/diary': 'Diary', '/progress': 'Progress', '/profile': 'Profile', '/premium': 'Premium', '/coach': 'Coach', '/privacy': 'Privacy policy', '/terms': 'Terms of use' };
+    const titles: Record<string, string> = { '/': 'Home', '/diary': 'Diary', '/progress': 'Progress', '/profile': 'Profile', '/premium': 'Premium', '/coach': 'Coach', '/privacy': 'Privacy policy', '/terms': 'Terms of use', '/support': 'Help & support' };
     document.title = `${titles[path] ?? 'FuelFlow'} · FuelFlow`;
   }, [path]);
 
-  // Privacy and terms are readable before setting up a profile too.
-  if (path === '/privacy' || path === '/terms') {
+  // Privacy, terms and support are readable before setting up a profile too
+  // (app stores link to them directly).
+  if (path === '/privacy' || path === '/terms' || path === '/support') {
     return (
       <div className="app legal-only">
         <main className="main" id="main">
-          <Suspense fallback={<div className="page-loading" aria-label="Loading" />}>{path === '/privacy' ? <Privacy /> : <Terms />}</Suspense>
+          <Suspense fallback={<div className="page-loading" aria-label="Loading" />}>{path === '/privacy' ? <Privacy /> : path === '/terms' ? <Terms /> : <Support />}</Suspense>
         </main>
       </div>
     );
@@ -124,7 +127,8 @@ function Shell() {
   if (!store.profile?.onboarded) return <Onboarding />;
 
   let page;
-  switch (path) {
+  // The store apps don't have a Premium screen (see lib/platform.ts).
+  switch (path === '/premium' && !showPremium() ? '' : path) {
     case '/':
       page = <Home />;
       break;
