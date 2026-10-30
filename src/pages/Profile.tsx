@@ -7,6 +7,8 @@ import { backupJson, diaryCsv, progressCsv, uid } from '../lib/storage';
 import { displayWater, displayWeight, weightToKg, weightValue, waterToMl, ML_PER_FLOZ } from '../lib/units';
 import { getApiKey, getProvider, isValidEndpoint, looksLikeKey, maskKey, PROVIDER_INFO, resolveAi, setApiKey, setProvider, testKey, type Provider } from '../lib/ai';
 import { isNativeApp, showPremium } from '../lib/platform';
+import { loadReminders, saveReminders, type ReminderItem, type ReminderSettings } from '../lib/reminders';
+import { checkPermission, remindersSupported, requestPermission, type Permission } from '../lib/notifications';
 import { BILLING_ENABLED } from '../lib/plans';
 import { Card, Field, NumberInput, Segmented, parseNum } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -78,6 +80,7 @@ export function Profile() {
       <TargetsSection />
       <UnitsSection />
       <MealsSection />
+      {remindersSupported() && <RemindersSection />}
       <div
         ref={(el) => {
           refs.current.ai = el;
@@ -546,6 +549,101 @@ function MealsSection() {
           Add
         </button>
       </div>
+    </Card>
+  );
+}
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function RemindersSection() {
+  const store = useStore();
+  const p = store.profile!;
+  const [settings, setSettings] = useState<ReminderSettings>(() => loadReminders(p.meals));
+  const [perm, setPerm] = useState<Permission | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Meals can be renamed, added or removed above; keep the list in step.
+  const mealKey = p.meals.map((m) => m.id).join('|');
+  useEffect(() => {
+    setSettings(loadReminders(p.meals));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mealKey]);
+  useEffect(() => {
+    checkPermission().then(setPerm).catch(() => setPerm(null));
+  }, []);
+
+  const update = (next: ReminderSettings) => {
+    setSettings(next);
+    saveReminders(next);
+  };
+  const setItem = (id: string, patch: Partial<ReminderItem>) => update({ ...settings, items: settings.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) });
+
+  const toggleAll = async () => {
+    if (settings.enabled) return update({ ...settings, enabled: false });
+    setBusy(true);
+    try {
+      const r = perm === 'granted' ? 'granted' : await requestPermission();
+      setPerm(r);
+      if (r === 'granted') {
+        update({ ...settings, enabled: true });
+        store.showToast('Reminders on');
+      }
+    } catch {
+      store.showToast('Couldn’t turn on reminders on this phone.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const label = (i: ReminderItem) =>
+    i.kind === 'meal' ? p.meals.find((m) => m.id === i.meal)?.name || 'Meal' : i.kind === 'water' ? 'Water' : 'Weigh-in';
+
+  return (
+    <Card title="Reminders" icon="bell">
+      <button className={'share-toggle' + (settings.enabled ? ' on' : '')} role="switch" aria-checked={settings.enabled} disabled={busy} onClick={() => void toggleAll()}>
+        <Icon name="bell" size={16} />
+        <span>{settings.enabled ? 'Reminders are on' : 'Remind me to log'}</span>
+        <span className="switch" aria-hidden="true">
+          <span />
+        </span>
+      </button>
+      {perm === 'denied' && !settings.enabled && (
+        <p className="notice warn small">
+          <Icon name="alert" size={16} /> Notifications are off for FuelFlow. Turn them on in your phone’s Settings → Notifications → FuelFlow, then try again.
+        </p>
+      )}
+      {settings.enabled && (
+        <>
+          <ul className="plain-list reminder-list">
+            {settings.items.map((i) => (
+              <li key={i.id} className={'plain-row reminder-row' + (i.on ? '' : ' off')}>
+                <label className="reminder-name">
+                  <input type="checkbox" checked={i.on} onChange={(e) => setItem(i.id, { on: e.target.checked })} />
+                  <span>{label(i)}</span>
+                </label>
+                {i.kind === 'weigh' && (
+                  <select className="reminder-day" value={i.weekday ?? 1} aria-label="Weigh-in day" disabled={!i.on} onChange={(e) => setItem(i.id, { weekday: Number(e.target.value) })}>
+                    {WEEKDAYS.map((d, n) => (
+                      <option key={d} value={n}>
+                        {d.slice(0, 3)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <input
+                  type="time"
+                  className="reminder-time"
+                  value={i.time}
+                  disabled={!i.on}
+                  aria-label={`${label(i)} reminder time`}
+                  onChange={(e) => e.target.value && setItem(i.id, { time: e.target.value })}
+                />
+              </li>
+            ))}
+          </ul>
+          <p className="muted small">Meal reminders skip meals you’ve already logged that day, and water reminders stop once you reach your goal. Weigh-in is once a week.</p>
+        </>
+      )}
     </Card>
   );
 }

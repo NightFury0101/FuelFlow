@@ -26,6 +26,8 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run ios:prepare
+      - name: Check the reminders plugin is inside the app
+        run: grep -q LocalNotifications ios/App/App/capacitor.config.json && echo "LocalNotifications plugin included"
       - name: Build for the iPhone simulator (no signing needed)
         run: |
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \

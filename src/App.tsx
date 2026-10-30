@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { StoreProvider, useStore, mealForNow } from './lib/store';
 import { todayKey } from './lib/date';
 import { showPremium } from './lib/platform';
+import { useReminderSync } from './lib/useReminders';
 import { applyTheme, resolveTheme } from './lib/theme';
 import { AddFoodSheet } from './components/AddFoodSheet';
 import { Link, useRoute } from './router';
@@ -95,6 +96,7 @@ function Shell() {
   const [logOpen, setLogOpen] = useState(false);
 
   useEffect(preloadScreens, []);
+  useReminderSync();
 
   // Appearance: the saved choice, or follow the phone's light/dark setting.
   const themePref = store.profile?.theme;

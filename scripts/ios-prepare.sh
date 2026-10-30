@@ -6,8 +6,9 @@ cd "$(dirname "$0")/.."
 
 test -f dist/index.html || { echo "Run 'npm run build' first."; exit 1; }
 
-# Capacitor wraps the web app in a native iPhone shell.
-npm install --no-save --no-audit --no-fund @capacitor/core@latest @capacitor/cli@latest @capacitor/ios@latest
+# Capacitor (in package.json) wraps the web app in a native iPhone shell; its LocalNotifications
+# plugin powers the daily reminders (src/lib/notifications.ts calls it through the native bridge).
+test -d node_modules/@capacitor/ios || npm install --no-audit --no-fund
 
 if [ ! -d ios ]; then
   npx cap add ios --packagemanager SPM

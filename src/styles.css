@@ -675,3 +675,14 @@ input[type='number']::-webkit-inner-spin-button { opacity: 0.4; }
 .faq[open] summary::after { transform: rotate(45deg); }
 .faq-body { padding: 0 0 14px; }
 .faq summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* Reminders (store apps) */
+.reminder-list { margin-top: 12px; }
+.reminder-row { gap: 10px; }
+.reminder-row.off .reminder-name span { color: var(--muted); }
+.reminder-name { flex: 1; display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; min-height: 44px; cursor: pointer; }
+.reminder-name input { width: 20px; height: 20px; accent-color: var(--accent-fill); flex: 0 0 auto; }
+.reminder-time { flex: 0 0 142px; width: 142px; }
+.reminder-day { flex: 0 0 76px; width: 76px; }
+.reminder-time, .reminder-day { min-width: 0; padding: 8px 10px; border-radius: 12px; font-size: 15px; font-variant-numeric: tabular-nums; }
+.reminder-time:disabled, .reminder-day:disabled { opacity: .45; }
