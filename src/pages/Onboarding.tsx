@@ -264,6 +264,11 @@ export function Onboarding() {
           </p>
         )}
         {step === 0 && store.cloud.account && <p className="ob-signin">Signed in as {store.cloud.account.email}. Set up your profile to start.</p>}
+        {step === 0 && (
+          <p className="ob-legal muted small">
+            <a href="#/privacy">Privacy policy</a> · <a href="#/terms">Terms of use</a>
+          </p>
+        )}
       </div>
       <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} />
     </div>

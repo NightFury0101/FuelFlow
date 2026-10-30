@@ -14,14 +14,16 @@ export interface PlanFeature {
   premium: string | boolean;
 }
 
+// What each plan includes. Free = available to everyone today. Premium = planned; nothing in this
+// column is sold or promised until billing launches.
 export const PLAN_TABLE: PlanFeature[] = [
-  { label: 'Food diary & manual logging', free: true, premium: true },
-  { label: 'Calories & macros', free: true, premium: true },
-  { label: 'Water & weight tracking', free: true, premium: true },
-  { label: 'AI nutrition coach', free: '10 questions / day', premium: 'Unlimited*' },
-  { label: 'Analytics history', free: '30 days', premium: 'Full history' },
-  { label: 'Meal planning', free: false, premium: true },
-  { label: 'Recipes & custom reports', free: false, premium: true },
+  { label: 'Food diary, recipes & meal planning', free: true, premium: true },
+  { label: 'Calories, macros, water & weight', free: true, premium: true },
+  { label: 'Progress charts', free: 'Up to 1 year', premium: 'Up to 1 year' },
+  { label: 'Cloud backup & sync', free: true, premium: true },
+  { label: 'AI nutrition coach', free: 'With your own free key', premium: 'Built in, no key' },
+  { label: 'Share progress with your trainer', free: false, premium: 'Planned' },
+  { label: 'Custom reports', free: false, premium: 'Planned' },
 ];
 
 export const PRICING = { monthly: null as string | null, yearly: null as string | null }; // set when billing launches

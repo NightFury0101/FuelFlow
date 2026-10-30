@@ -243,3 +243,71 @@ test('amount labels read naturally', () => {
   const r = buildRecipeFood('r', 'R', 2, [{ food: banana, servingLabel: 'g', quantity: 200, amount: 200 }]);
   assert.equal(formatAmount({ food: r, servingLabel: r.servings[0].label, quantity: 1, amount: 100 }), '1 serving (100 g)');
 });
+
+import { milestones, weeklyBuckets } from '../src/lib/analytics';
+import { summarizeMeasures, toDisplay, fromDisplay, MEASURES } from '../src/lib/measurements';
+import { resolveTheme } from '../src/lib/theme';
+
+test('milestones follow the goal and only count what happened', () => {
+  const ws = [w('2026-09-01', 80), w('2026-09-10', 78.9), w('2026-09-20', 77.8), w('2026-10-01', 75.9)];
+  const fmt = (kg: number) => `${Math.round(kg * 10) / 10} kg`;
+  const r = milestones({ weights: ws, entries: [], goal: 'lose', startKg: 80, goalKg: 72, stepKg: 2, fmt, today: '2026-10-02' });
+  const ids = r.reached.map((m) => m.id);
+  assert.ok(ids.includes('first-weigh-in'));
+  assert.ok(ids.includes('step-1') && ids.includes('step-2'), '4.1 kg lost passes 2 and 4 kg');
+  assert.equal(r.reached.find((m) => m.id === 'step-2')!.date, '2026-10-01');
+  assert.ok(ids.includes('halfway'), 'halfway (76 kg) passed at 75.9');
+  assert.ok(!ids.includes('goal'));
+  const nextW = r.next.find((m) => m.id.startsWith('step') || m.id === 'goal')!;
+  assert.equal(nextW.id, 'step-3');
+  assert.equal(nextW.detail, '1.9 kg to go');
+  const gain = milestones({ weights: [w('2026-09-01', 60), w('2026-10-01', 61)], entries: [], goal: 'gain', stepKg: 2, fmt, today: '2026-10-01' });
+  assert.equal(gain.next[0].detail, '1 kg to go');
+  const keep = milestones({ weights: ws, entries: [], goal: 'maintain', stepKg: 2, fmt, today: '2026-10-01' });
+  assert.ok(!keep.reached.some((m) => m.id.startsWith('step')), 'no loss milestones when maintaining');
+});
+
+test('logging streak milestones', () => {
+  const days = Array.from({ length: 8 }, (_, i) => entry(addDays('2026-10-01', i), 100));
+  const r = milestones({ weights: [], entries: days, goal: 'maintain', stepKg: 2, fmt: String, today: '2026-10-08' });
+  assert.equal(r.reached.find((m) => m.id === 'streak-7')!.date, '2026-10-07');
+  assert.equal(r.next[0].id, 'streak-30');
+  const gap = milestones({ weights: [], entries: [entry('2026-10-01', 1), entry('2026-10-03', 1)], goal: 'maintain', stepKg: 2, fmt: String, today: '2026-10-03' });
+  assert.ok(!gap.reached.some((m) => m.id === 'streak-7'));
+  assert.equal(gap.next[0].detail, '6 more days in a row');
+});
+
+test('weekly buckets average logged days only', () => {
+  const days = Array.from({ length: 14 }, (_, i) => ({ date: addDays('2026-10-01', i), value: i < 7 ? (i % 2 ? 1000 : null) : 2000 }));
+  const b = weeklyBuckets(days);
+  assert.equal(b.length, 2);
+  assert.deepEqual(b.map((x) => [x.date, x.value, x.days]), [['2026-10-01', 1000, 3], ['2026-10-08', 2000, 7]]);
+  assert.equal(weeklyBuckets([{ date: '2026-10-01', value: null }])[0].value, null);
+});
+
+test('measurements: summary and unit conversion', () => {
+  const list = [{ ...w('2026-10-01', 80), waistCm: 90 }, { ...w('2026-10-20', 79), waistCm: 87.5, bodyFatPct: 24 }, w('2026-10-25', 78.8)];
+  const sum = summarizeMeasures(list);
+  const waist = sum.find((x) => x.measure.key === 'waistCm')!;
+  assert.deepEqual([waist.first.value, waist.latest.value, waist.count], [90, 87.5, 2]);
+  assert.equal(sum.find((x) => x.measure.key === 'bodyFatPct')!.count, 1);
+  const waistM = MEASURES[0];
+  const imperial = { weight: 'lb', height: 'ftin', water: 'floz' } as const;
+  assert.equal(toDisplay(waistM, 91.44, imperial), 36);
+  assert.equal(fromDisplay(waistM, 36, imperial), 91.4);
+});
+
+test('theme: dark by default, follows phone only when asked', () => {
+  assert.equal(resolveTheme(undefined, true), 'dark');
+  assert.equal(resolveTheme('light', false), 'light');
+  assert.equal(resolveTheme('system', true), 'light');
+  assert.equal(resolveTheme('system', false), 'dark');
+});
+
+test('a year of days makes 52 weekly buckets', () => {
+  const year = Array.from({ length: 365 }, (_, i) => ({ date: addDays('2025-10-31', i), value: 1 }));
+  const b = weeklyBuckets(year);
+  assert.equal(b.length, 52);
+  assert.equal(b[0].days, 8);
+  assert.equal(b.at(-1)!.date, addDays('2025-10-31', 358));
+});

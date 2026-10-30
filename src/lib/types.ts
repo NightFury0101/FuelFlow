@@ -84,6 +84,11 @@ export interface WeightEntry {
   date: string;
   kg: number;
   waistCm?: number;
+  hipsCm?: number;
+  chestCm?: number;
+  armCm?: number;
+  thighCm?: number;
+  bodyFatPct?: number;
   note?: string;
   createdAt: number;
 }
@@ -107,6 +112,8 @@ export interface Targets {
   fat: number;
   waterMl: number;
 }
+
+export type ThemePref = 'system' | 'dark' | 'light';
 
 export interface UnitPrefs {
   weight: 'kg' | 'lb';
@@ -133,6 +140,7 @@ export interface Profile {
   setupIncomplete: boolean; // user skipped body details
   scannerEndpoint?: string; // the user's private AI server for the coach (name kept for saved data)
   coachShareLog?: boolean; // opt-in: let the coach see a summary of the food log
+  theme?: ThemePref; // appearance; dark when unset
   waterQuickAdds: number[]; // ml
   createdAt: number;
 }

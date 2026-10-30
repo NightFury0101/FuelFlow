@@ -14,7 +14,7 @@ export function Premium() {
           <Icon name="crown" size={26} />
         </span>
         <h1>FuelFlow Premium</h1>
-        <p className="muted">More insight, faster logging, and planning tools — for people who want to go further.</p>
+        <p className="muted">Everything you need is free today. Premium is planned for extras like a built-in coach and sharing progress with your trainer.</p>
       </header>
 
       <Card>
@@ -24,7 +24,7 @@ export function Premium() {
               <th scope="col">Feature</th>
               <th scope="col">Free</th>
               <th scope="col" className="accent">
-                Premium
+                Premium <span className="muted small">(planned)</span>
               </th>
             </tr>
           </thead>
@@ -39,7 +39,7 @@ export function Premium() {
             ))}
           </tbody>
         </table>
-        <p className="muted small">*Fair-use limits apply to the AI coach.</p>
+        <p className="muted small">Premium isn’t available yet and nothing is charged. When it launches, the free features above stay free.</p>
       </Card>
 
       <Card className="status-card">
@@ -52,7 +52,7 @@ export function Premium() {
             <button className="btn btn-primary block" disabled>
               Premium is coming soon
             </button>
-            <p className="muted small">Payments aren’t set up yet, so nothing can be charged. Until then, every feature listed above is available to you for free.</p>
+            <p className="muted small">Payments aren’t set up, so nothing can be charged. Everything in the Free column is yours now.</p>
           </>
         )}
       </Card>

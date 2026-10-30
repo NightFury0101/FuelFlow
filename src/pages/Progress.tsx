@@ -2,15 +2,17 @@ import { useMemo, useState } from 'react';
 import type { WeightEntry } from '../lib/types';
 import { useStore } from '../lib/store';
 import { addDays, formatShort, todayKey } from '../lib/date';
-import { changeOver, dailyTotals, loggingStreak, sortedWeights, summarize, waterByDay, weeklyTrend } from '../lib/analytics';
-import { displayWater, displayWeight, weightValue } from '../lib/units';
+import { changeOver, dailyTotals, loggingStreak, milestones, sortedWeights, summarize, waterByDay, weeklyBuckets, weeklyTrend } from '../lib/analytics';
+import { MEASURES, summarizeMeasures, toDisplay, unitFor } from '../lib/measurements';
+import { displayWater, displayWeight, lbToKg, weightValue } from '../lib/units';
 import { BarChart, LineChart } from '../components/charts';
 import { Card, EmptyState, Segmented } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { WeightSheet } from '../components/WeightSheet';
 
 type Range = '30' | '90' | '365' | 'all';
-type Period = '7' | '30';
+type Period = '7' | '30' | '90' | '365';
+const PERIOD_LABEL: Record<Period, string> = { '7': '7 days', '30': '30 days', '90': '3 months', '365': '1 year' };
 
 export function Progress() {
   const store = useStore();
@@ -44,6 +46,30 @@ export function Progress() {
   const waterLogged = water.filter((w) => w.ml != null);
   const waterAvg = waterLogged.length ? Math.round(waterLogged.reduce((s, w) => s + (w.ml || 0), 0) / waterLogged.length) : null;
   const streak = loggingStreak(store.data.entries, today);
+
+  // Longer periods are charted as weekly averages so the bars stay readable.
+  const weekly = days > 30;
+  const chartOf = (list: Array<{ date: string; value: number | null }>) => (weekly ? weeklyBuckets(list) : list);
+  const kcalBars = useMemo(() => chartOf(totals.map((d) => ({ date: d.date, value: d.logged ? d.kcal : null }))), [totals, weekly]); // eslint-disable-line react-hooks/exhaustive-deps
+  const proteinBars = useMemo(() => chartOf(totals.map((d) => ({ date: d.date, value: d.logged ? d.protein : null }))), [totals, weekly]); // eslint-disable-line react-hooks/exhaustive-deps
+  const waterBars = useMemo(() => chartOf(water.map((w) => ({ date: w.date, value: w.ml }))), [water, weekly]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const measures = useMemo(() => summarizeMeasures(store.data.weights), [store.data.weights]);
+  const ms = useMemo(
+    () =>
+      milestones({
+        weights: store.data.weights,
+        entries: store.data.entries,
+        goal: profile.goal,
+        startKg: profile.startWeightKg,
+        goalKg: profile.goalWeightKg,
+        stepKg: units.weight === 'lb' ? lbToKg(5) : 2,
+        fmt: (kg) => `${weightValue(kg, units)} ${units.weight}`,
+        today,
+      }),
+    [store.data.weights, store.data.entries, profile.goal, profile.startWeightKg, profile.goalWeightKg, units, today],
+  );
+  const [allMilestones, setAllMilestones] = useState(false);
 
   const fmtDelta = (kg: number | null) => (kg == null ? '—' : `${kg > 0 ? '+' : kg < 0 ? '−' : ''}${weightValue(Math.abs(kg), units)} ${units.weight}`);
   const toGoal = latest && profile.goalWeightKg ? Math.round((profile.goalWeightKg - latest.kg) * 10) / 10 : null;
@@ -128,7 +154,7 @@ export function Progress() {
                           <span className="muted small">
                             {' '}
                             · {formatShort(w.date)}
-                            {w.waistCm ? ` · waist ${w.waistCm} cm` : ''}
+                            {w.waistCm ? ` · waist ${toDisplay(MEASURES[0], w.waistCm, units)} ${unitFor(MEASURES[0], units)}` : ''}
                           </span>
                           {w.note && <span className="muted small block">{w.note}</span>}
                         </span>
@@ -147,14 +173,77 @@ export function Progress() {
         )}
       </Card>
 
+      {measures.length > 0 && (
+        <Card title="Body measurements" icon="target">
+          <ul className="measure-list">
+            {measures.map(({ measure: m, first, latest: l, count }) => {
+              const unit = unitFor(m, units);
+              const change = Math.round((toDisplay(m, l.value, units) - toDisplay(m, first.value, units)) * 10) / 10;
+              return (
+                <li key={m.key}>
+                  <span className="ml-name">{m.label}</span>
+                  <span className="ml-value">
+                    {toDisplay(m, l.value, units)} {unit}
+                  </span>
+                  <span className="ml-change muted small">
+                    {count > 1 ? `${change > 0 ? '+' : change < 0 ? '−' : '±'}${Math.abs(change)} ${unit} since ${formatShort(first.date)}` : `on ${formatShort(l.date)}`}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="muted small">Add measurements when you log your weight. Measuring every 2–4 weeks is plenty.</p>
+        </Card>
+      )}
+
+      <Card title="Milestones" icon="star">
+        {ms.next.length > 0 && (
+          <ul className="milestones next">
+            {ms.next.map((m) => (
+              <li key={m.id}>
+                <span className="ms-dot" aria-hidden="true" />
+                <span className="ms-main">
+                  <strong>Next: {m.title}</strong>
+                  <span className="muted small">{m.detail}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {ms.reached.length === 0 ? (
+          <p className="muted small">Your milestones appear here as you log food and weigh in.</p>
+        ) : (
+          <ul className="milestones">
+            {ms.reached.slice(0, allMilestones ? undefined : 5).map((m) => (
+              <li key={m.id}>
+                <span className="ms-dot done" aria-hidden="true">
+                  <Icon name="check" size={12} />
+                </span>
+                <span className="ms-main">
+                  <strong>{m.title}</strong>
+                  <span className="muted small">{m.date ? formatShort(m.date) : ''}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {ms.reached.length > 5 && (
+          <button className="link-btn" onClick={() => setAllMilestones((x) => !x)}>
+            {allMilestones ? 'Show less' : `Show all ${ms.reached.length}`}
+          </button>
+        )}
+      </Card>
+
       <div className="period-switch">
         <Segmented<Period>
           label="Period"
           value={period}
           onChange={setPeriod}
           options={[
-            { value: '7', label: 'Last 7 days' },
-            { value: '30', label: 'Last 30 days' },
+            { value: '7', label: '7 days' },
+            { value: '30', label: '30 days' },
+            { value: '90', label: '3 months' },
+            { value: '365', label: '1 year' },
           ]}
         />
       </div>
@@ -170,7 +259,7 @@ export function Progress() {
                 <strong>{sum.avgKcal?.toLocaleString()} kcal</strong>
               </div>
               <div>
-                <span>vs previous {days} days</span>
+                <span>vs previous {PERIOD_LABEL[period]}</span>
                 <strong>{prevSum.avgKcal == null || sum.avgKcal == null ? '—' : `${sum.avgKcal - prevSum.avgKcal > 0 ? '+' : sum.avgKcal - prevSum.avgKcal < 0 ? '−' : ''}${Math.abs(sum.avgKcal - prevSum.avgKcal)} kcal`}</strong>
               </div>
               <div>
@@ -186,8 +275,9 @@ export function Progress() {
                 </strong>
               </div>
             </div>
-            <BarChart days={totals.map((d) => ({ date: d.date, value: d.logged ? d.kcal : null }))} target={profile.targets.kcal} unit="kcal" />
+            <BarChart days={kcalBars} target={profile.targets.kcal} unit="kcal" weekly={weekly} />
             <p className="legend muted small">
+              {weekly && <>Weekly averages · </>}
               <span className="lg-line" /> target {profile.targets.kcal.toLocaleString()} kcal <span className="lg-miss" /> not logged
             </p>
             <p className="muted small">Averages only count days you logged — a missing day is never treated as zero.</p>
@@ -221,7 +311,7 @@ export function Progress() {
             <p className="small">
               Protein target hit on <strong>{sum.proteinHitDays}</strong> of {sum.loggedDays} logged day{sum.loggedDays === 1 ? '' : 's'}.
             </p>
-            <BarChart days={totals.map((d) => ({ date: d.date, value: d.logged ? d.protein : null }))} target={profile.targets.protein} unit="g protein" color="var(--protein)" height={130} />
+            <BarChart days={proteinBars} target={profile.targets.protein} unit="g protein" color="var(--protein)" height={130} weekly={weekly} />
           </>
         )}
       </Card>
@@ -234,7 +324,7 @@ export function Progress() {
             <p className="small">
               Average <strong>{displayWater(waterAvg || 0, units)}</strong> on {waterLogged.length} day{waterLogged.length === 1 ? '' : 's'} logged · target {displayWater(profile.targets.waterMl, units)}
             </p>
-            <BarChart days={water.map((w) => ({ date: w.date, value: w.ml }))} target={profile.targets.waterMl} unit="ml" color="var(--water)" height={130} />
+            <BarChart days={waterBars} target={profile.targets.waterMl} unit="ml" color="var(--water)" height={130} weekly={weekly} />
           </>
         )}
       </Card>

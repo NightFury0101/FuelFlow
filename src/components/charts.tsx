@@ -120,7 +120,7 @@ export function LineChart({ points, goal, unit, height = 200 }: { points: Pt[]; 
 }
 
 /** Daily bar chart. Days without records are drawn as a faint dash so "not logged" never looks like zero. */
-export function BarChart({ days, target, unit, color = 'var(--accent)', height = 170 }: { days: Array<{ date: string; value: number | null }>; target?: number; unit: string; color?: string; height?: number }) {
+export function BarChart({ days, target, unit, color = 'var(--accent)', height = 170, weekly = false }: { days: Array<{ date: string; value: number | null }>; target?: number; unit: string; color?: string; height?: number; weekly?: boolean }) {
   const [hover, setHover] = useState<number | null>(null);
   const W = 340;
   const H = height;
@@ -130,10 +130,25 @@ export function BarChart({ days, target, unit, color = 'var(--accent)', height =
   const bw = Math.max(3, Math.min(22, slot * 0.62));
   const y = (v: number) => pad.t + (1 - v / max) * (H - pad.t - pad.b);
   const every = days.length <= 7 ? 1 : days.length <= 14 ? 2 : Math.ceil(days.length / 6);
+  const month = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { month: 'short' });
+  // Weekly view: label the first week of each month (every other month on a full year).
+  const monthStarts = weekly ? days.map((d, i) => i === 0 || d.date.slice(0, 7) !== days[i - 1].date.slice(0, 7)) : [];
+  const monthEvery = days.length > 26 ? 2 : 1;
+  let monthCount = 0;
+  const label = (d: { date: string }, i: number): string | null => {
+    if (weekly) {
+      if (!monthStarts[i]) return null;
+      return monthCount++ % monthEvery === 0 ? month(d.date) : null;
+    }
+    if (i % every !== 0) return null;
+    return days.length <= 7 ? new Date(d.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'narrow' }) : (formatShort(d.date).split(' ')[1] ?? '');
+  };
+  const tipDate = (d: string) => (weekly ? `Week of ${formatShort(d)}` : formatShort(d));
+  const tipValue = (v: number | null) => (v == null ? 'Not logged' : `${weekly ? 'avg ' : ''}${Math.round(v).toLocaleString()} ${unit}`);
   const hd = hover != null ? days[hover] : null;
   return (
     <div className="chart-wrap">
-      <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label={`Bar chart of ${days.length} days`}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label={`Bar chart of ${days.length} ${weekly ? 'weeks' : 'days'}`}>
         {target != null && target > 0 && <line x1={pad.l} x2={W - pad.r} y1={y(target)} y2={y(target)} className="goal-line" />}
         {days.map((d, i) => {
           const cx = pad.l + slot * i + slot / 2;
@@ -145,19 +160,22 @@ export function BarChart({ days, target, unit, color = 'var(--accent)', height =
               ) : (
                 <rect x={cx - bw / 2} y={y(d.value)} width={bw} height={Math.max(2, y(0) - y(d.value))} rx={Math.min(5, bw / 2)} fill={color} opacity={hover === i ? 1 : 0.85} />
               )}
-              {i % every === 0 && (
-                <text x={cx} y={H - 6} className="axis" textAnchor="middle">
-                  {days.length <= 7 ? new Date(d.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'narrow' }) : formatShort(d.date).split(' ')[1] ?? ''}
-                </text>
-              )}
-              <title>{`${formatShort(d.date)}: ${d.value == null ? 'not logged' : `${Math.round(d.value)} ${unit}`}`}</title>
+              {(() => {
+                const t = label(d, i);
+                return t ? (
+                  <text x={cx} y={H - 6} className="axis" textAnchor={weekly ? 'start' : 'middle'}>
+                    {t}
+                  </text>
+                ) : null;
+              })()}
+              <title>{`${tipDate(d.date)}: ${tipValue(d.value)}`}</title>
             </g>
           );
         })}
       </svg>
       {hd && (
         <div className="chart-tip">
-          {formatShort(hd.date)} · <strong>{hd.value == null ? 'Not logged' : `${Math.round(hd.value)} ${unit}`}</strong>
+          {tipDate(hd.date)} · <strong>{tipValue(hd.value)}</strong>
         </div>
       )}
     </div>

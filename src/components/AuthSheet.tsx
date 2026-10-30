@@ -122,7 +122,19 @@ export function AuthSheet({ open, onClose, initialMode = 'in' }: { open: boolean
             Back to sign in
           </button>
         )}
-        {mode === 'up' && <p className="muted small">By creating an account you agree that your FuelFlow data is stored in your private account in Google Firebase. You can delete it at any time from your profile.</p>}
+        {mode === 'up' && (
+          <p className="muted small">
+            By creating an account you agree to the{' '}
+            <a className="accent" href="#/terms" onClick={onClose}>
+              Terms of use
+            </a>{' '}
+            and{' '}
+            <a className="accent" href="#/privacy" onClick={onClose}>
+              Privacy policy
+            </a>
+            . Your data is stored in your private account and you can delete it at any time.
+          </p>
+        )}
       </form>
     </Sheet>
   );

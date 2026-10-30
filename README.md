@@ -20,12 +20,17 @@ FuelFlow is a mobile-first calorie counter, nutrition tracker and AI nutrition c
 - **Water** – Quick-add buttons, custom amounts, edit or delete with undo, and ml or fl oz.
 - **Progress**
   - Weight chart plotted on real dates, with start, current and goal values and changes over 7 and 30 days.
+  - Optional body measurements on any weigh-in (waist, hips, chest, upper arm, thigh, body fat %) with change since the first record. Lengths show in cm or inches.
+  - Milestones worked out from your own records: every 2 kg (or 5 lb) toward the goal, halfway, goal reached, first log, and 7-day and 30-day logging streaks, plus what's next.
   - A weekly trend (needs at least 3 weigh-ins spread over a week or more).
-  - Calorie, protein and water charts for 7 or 30 days, comparison with the previous period, and logging consistency.
+  - Calorie, protein and water charts for 7 days, 30 days, 3 months or 1 year. Longer periods show weekly averages. Each period is compared with the one before, and logging consistency is shown.
   - Days you didn't log are shown as gaps, never as zero.
 - **AI nutrition coach** – A chat screen for food questions: meal ideas that fit what's left of today's calories, weekly reviews, label reading, eating out and cravings. It covers food only, not workouts. It sees your food log **only if you allow it**, and then only a short summary built from your real records. Its rules rule out crash diets, diagnoses and pushing supplements, and steer medical situations to a professional. To connect it, go to **Profile → AI nutrition coach** and paste either a **free Gemini key** (from aistudio.google.com/apikey; daily limits apply, and Google may use free-tier conversations to improve its products) or a **Claude key** (pay as you go, usually under 1 cent per question). The key is stored only in that browser and is sent only to that AI provider. It is never included in backups or committed to GitHub. If one of Google's free models is retired, FuelFlow automatically tries the next one (`GEMINI_MODELS` in `src/lib/ai.ts`). If other people will use the app, the private-server option in [`server/`](./server/README.md) keeps the key off their phones instead. Everything else in FuelFlow works without the coach.
 - **Accounts and sync** – Optional free account (email and password) with cloud backup and sync across phones, password reset and full account deletion. It's switched on once `src/firebaseConfig.ts` is filled in.
 - **Profile** – Body and goal details with target recalculation, target editing, units, meals, coach setup, JSON backup and restore, diary and progress CSV export, and delete-all.
+- **Appearance** – Dark by default, with a Light option or *Match phone*. The choice is saved in the profile, so it syncs with the account.
+- **Works offline** – A service worker (`src/sw-template.js`, filled in by `build.mjs`) saves the app on the first visit, so it opens and works without a connection. Account data, food searches and AI requests always go to the network.
+- **Privacy policy and terms** – In-app pages (`#/privacy`, `#/terms`) linked from onboarding, sign-up and Profile. They describe exactly how the app handles data, and should be reviewed before a public launch.
 - **Premium** – A plan comparison page. Billing isn't connected, so no one can be charged and every feature stays free (see `src/lib/plans.ts`).
 
 ## Where your data lives

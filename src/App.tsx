@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { StoreProvider, useStore, mealForNow } from './lib/store';
 import { todayKey } from './lib/date';
+import { applyTheme, resolveTheme } from './lib/theme';
 import { AddFoodSheet } from './components/AddFoodSheet';
 import { Link, useRoute } from './router';
 import { Icon, type IconName } from './components/Icon';
@@ -16,11 +17,14 @@ const loaders = {
   profile: () => import('./pages/Profile'),
   coach: () => import('./pages/Coach'),
   premium: () => import('./pages/Premium'),
+  legal: () => import('./pages/Legal'),
 };
 const Progress = lazy(() => loaders.progress().then((m) => ({ default: m.Progress })));
 const Profile = lazy(() => loaders.profile().then((m) => ({ default: m.Profile })));
 const Coach = lazy(() => loaders.coach().then((m) => ({ default: m.Coach })));
 const Premium = lazy(() => loaders.premium().then((m) => ({ default: m.Premium })));
+const Privacy = lazy(() => loaders.legal().then((m) => ({ default: m.Privacy })));
+const Terms = lazy(() => loaders.legal().then((m) => ({ default: m.Terms })));
 
 function preloadScreens() {
   const go = () => Object.values(loaders).forEach((load) => load().catch(() => undefined));
@@ -90,11 +94,32 @@ function Shell() {
 
   useEffect(preloadScreens, []);
 
+  // Appearance: the saved choice, or follow the phone's light/dark setting.
+  const themePref = store.profile?.theme;
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    const update = () => applyTheme(resolveTheme(themePref, mq.matches));
+    update();
+    mq.addEventListener?.('change', update);
+    return () => mq.removeEventListener?.('change', update);
+  }, [themePref]);
+
   useEffect(() => {
     window.scrollTo(0, 0);
-    const titles: Record<string, string> = { '/': 'Home', '/diary': 'Diary', '/progress': 'Progress', '/profile': 'Profile', '/premium': 'Premium', '/coach': 'Coach' };
+    const titles: Record<string, string> = { '/': 'Home', '/diary': 'Diary', '/progress': 'Progress', '/profile': 'Profile', '/premium': 'Premium', '/coach': 'Coach', '/privacy': 'Privacy policy', '/terms': 'Terms of use' };
     document.title = `${titles[path] ?? 'FuelFlow'} · FuelFlow`;
   }, [path]);
+
+  // Privacy and terms are readable before setting up a profile too.
+  if (path === '/privacy' || path === '/terms') {
+    return (
+      <div className="app legal-only">
+        <main className="main" id="main">
+          <Suspense fallback={<div className="page-loading" aria-label="Loading" />}>{path === '/privacy' ? <Privacy /> : <Terms />}</Suspense>
+        </main>
+      </div>
+    );
+  }
 
   if (!store.profile?.onboarded) return <Onboarding />;
 

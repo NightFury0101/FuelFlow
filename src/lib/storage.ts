@@ -176,8 +176,8 @@ export function diaryCsv(data: AppData): string {
 }
 
 export function progressCsv(data: AppData): string {
-  const head = ['date', 'weight_kg', 'waist_cm', 'note'];
-  const rows = [...data.weights].sort((a, b) => a.date.localeCompare(b.date)).map((w) => [w.date, w.kg, w.waistCm, w.note]);
+  const head = ['date', 'weight_kg', 'waist_cm', 'hips_cm', 'chest_cm', 'arm_cm', 'thigh_cm', 'body_fat_pct', 'note'];
+  const rows = [...data.weights].sort((a, b) => a.date.localeCompare(b.date)).map((w) => [w.date, w.kg, w.waistCm, w.hipsCm, w.chestCm, w.armCm, w.thighCm, w.bodyFatPct, w.note]);
   const waterHead = ['date', 'water_ml'];
   const byDay = new Map<string, number>();
   for (const w of data.water) byDay.set(w.date, (byDay.get(w.date) || 0) + w.ml);

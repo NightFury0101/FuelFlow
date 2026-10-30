@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { Activity, Goal, Sex, SpecialCircumstance, Targets, UnitPrefs } from '../lib/types';
+import type { Activity, Goal, Sex, SpecialCircumstance, Targets, ThemePref, UnitPrefs } from '../lib/types';
 import { useStore } from '../lib/store';
 import { ACTIVITY, balanceCarbs, calculateTargets } from '../lib/targets';
 import { ageFromBirthDate, isValidDateKey, todayKey } from '../lib/date';
@@ -84,7 +84,17 @@ export function Profile() {
 
       <DataSection />
 
-      <p className="muted small center foot-note">FuelFlow gives estimates for general wellbeing, not medical advice.</p>
+      <p className="muted small center foot-note">
+        FuelFlow gives estimates for general wellbeing, not medical advice.
+        <br />
+        <Link to="/privacy" className="accent">
+          Privacy policy
+        </Link>{' '}
+        ·{' '}
+        <Link to="/terms" className="accent">
+          Terms of use
+        </Link>
+      </p>
     </div>
   );
 }
@@ -444,8 +454,20 @@ function UnitsSection() {
   const p = store.profile!;
   const set = (patch: Partial<UnitPrefs>) => store.updateProfile({ units: { ...p.units, ...patch } });
   return (
-    <Card title="Units" icon="settings">
+    <Card title="Units & appearance" icon="settings">
       <div className="form">
+        <Field label="Appearance">
+          <Segmented<ThemePref>
+            label="Appearance"
+            value={p.theme ?? 'dark'}
+            onChange={(v) => store.updateProfile({ theme: v })}
+            options={[
+              { value: 'dark', label: 'Dark' },
+              { value: 'light', label: 'Light' },
+              { value: 'system', label: 'Match phone' },
+            ]}
+          />
+        </Field>
         <Field label="Weight">
           <Segmented label="Weight unit" value={p.units.weight} onChange={(v) => set({ weight: v })} options={[{ value: 'kg', label: 'kg' }, { value: 'lb', label: 'lb' }]} />
         </Field>
