@@ -4,10 +4,9 @@ const DEV_KEY = 'fuelflow:dev-firebase';
 
 /**
  * The Firebase project to use, or null when accounts aren't set up.
- * On localhost only, a config can be supplied through localStorage for testing.
+ * On localhost only, a config supplied through localStorage (for testing) takes precedence.
  */
 export function getFirebaseConfig(): FirebaseWebConfig | null {
-  if (firebaseConfig?.apiKey && firebaseConfig.projectId) return firebaseConfig;
   try {
     if (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
       const raw = localStorage.getItem(DEV_KEY);
@@ -19,6 +18,7 @@ export function getFirebaseConfig(): FirebaseWebConfig | null {
   } catch {
     /* ignore */
   }
+  if (firebaseConfig?.apiKey && firebaseConfig.projectId) return firebaseConfig;
   return null;
 }
 
