@@ -97,7 +97,7 @@ Copy these into App Store Connect (limits in brackets).
 > see real progress — free, with no ads.
 
 **Keywords** (100, comma-separated, no spaces needed):
-`calorie,counter,tracker,macro,protein,diet,nutrition,meal,planner,food,diary,water,weight,loss,fitness`
+`calorie,counter,tracker,macro,protein,diet,nutrition,meal,planner,food,diary,water,weight,fitness`
 
 **Description** (4000):
 
