@@ -162,7 +162,7 @@ code { font-size: 0.9em; background: var(--surface-3); padding: 1px 5px; border-
 }
 
 .brand-mark { display: inline-flex; align-items: center; gap: 9px; font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -0.02em; }
-.logo-dot { width: 14px; height: 14px; border-radius: 5px; background: var(--accent-fill); transform: rotate(45deg); box-shadow: 0 0 18px rgba(197, 244, 50, 0.45); }
+.logo-dot { width: 18px; height: 18px; flex: 0 0 auto; border-radius: 50%; background: conic-gradient(var(--accent-fill) 0 75%, var(--border-strong) 0); -webkit-mask: radial-gradient(circle, transparent 4.5px, #000 5px); mask: radial-gradient(circle, transparent 4.5px, #000 5px); filter: drop-shadow(0 0 6px rgba(197, 244, 50, 0.45)); }
 
 /* ---------- Cards ---------- */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--pad); }
