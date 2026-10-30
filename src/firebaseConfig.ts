@@ -16,4 +16,11 @@ export interface FirebaseWebConfig {
   appId?: string;
 }
 
-export const firebaseConfig: FirebaseWebConfig | null = null;
+export const firebaseConfig: FirebaseWebConfig | null = {
+  apiKey: 'AIzaSyDKQW0OPdIwbtW4dDThQyydNmDAlTI43RY',
+  authDomain: 'fuelflow-30262.firebaseapp.com',
+  projectId: 'fuelflow-30262',
+  storageBucket: 'fuelflow-30262.firebasestorage.app',
+  messagingSenderId: '807509373114',
+  appId: '1:807509373114:web:2df47b3d775f4e279ed283',
+};
