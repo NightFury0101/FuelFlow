@@ -9,11 +9,25 @@ import { Onboarding } from './pages/Onboarding';
 import { Home } from './pages/Home';
 import { Diary } from './pages/Diary';
 
-// Heavier, less-visited screens load on demand.
-const Progress = lazy(() => import('./pages/Progress').then((m) => ({ default: m.Progress })));
-const Profile = lazy(() => import('./pages/Profile').then((m) => ({ default: m.Profile })));
-const Coach = lazy(() => import('./pages/Coach').then((m) => ({ default: m.Coach })));
-const Premium = lazy(() => import('./pages/Premium').then((m) => ({ default: m.Premium })));
+// Heavier screens load separately so the first screen appears fast, then they are
+// preloaded in the background so every screen also opens without a connection.
+const loaders = {
+  progress: () => import('./pages/Progress'),
+  profile: () => import('./pages/Profile'),
+  coach: () => import('./pages/Coach'),
+  premium: () => import('./pages/Premium'),
+};
+const Progress = lazy(() => loaders.progress().then((m) => ({ default: m.Progress })));
+const Profile = lazy(() => loaders.profile().then((m) => ({ default: m.Profile })));
+const Coach = lazy(() => loaders.coach().then((m) => ({ default: m.Coach })));
+const Premium = lazy(() => loaders.premium().then((m) => ({ default: m.Premium })));
+
+function preloadScreens() {
+  const go = () => Object.values(loaders).forEach((load) => load().catch(() => undefined));
+  const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+  if (w.requestIdleCallback) w.requestIdleCallback(go);
+  else window.setTimeout(go, 1500);
+}
 
 const NAV: Array<{ to: string; label: string; icon: IconName; sideOnly?: boolean }> = [
   { to: '/', label: 'Home', icon: 'home' },
@@ -73,6 +87,8 @@ function Shell() {
   const store = useStore();
   const { path } = useRoute();
   const [logOpen, setLogOpen] = useState(false);
+
+  useEffect(preloadScreens, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);

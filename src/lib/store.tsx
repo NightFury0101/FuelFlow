@@ -3,6 +3,7 @@ import type { AppData, Food, FoodEntry, MealId, Nutrients, Profile, SavedMeal, W
 import { loadData, normalizeData, saveData, STORAGE_KEY, uid } from './storage';
 import { scaleNutrients, snapshotFood } from './nutrition';
 import { todayKey } from './date';
+import { useCloud, type CloudApi } from './cloud/useCloud';
 
 export const DEFAULT_MEALS = [
   { id: 'breakfast', name: 'Breakfast' },
@@ -30,6 +31,7 @@ export interface NewEntryInput {
 
 interface Store {
   data: AppData;
+  cloud: CloudApi;
   profile: Profile | null;
   saveError: string | null;
   toast: { id: number; text: string; undo?: () => void } | null;
@@ -69,15 +71,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [toast, setToast] = useState<Store['toast']>(null);
   const skipSave = useRef(false);
+  const remoteBase = useRef<AppData | null>(null);
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  const prevRef = useRef(data);
 
-  // Persist after every change.
+  // Data that arrives from the cloud replaces the local copy without being sent back.
+  const replaceData = useCallback((d: AppData) => {
+    remoteBase.current = d;
+    setData(d);
+  }, []);
+  const cloud = useCloud(dataRef, replaceData);
+
+  // Persist after every change, and queue it for the cloud when signed in.
   useEffect(() => {
+    // Compare against the cloud copy when one just arrived, so only real local edits are queued
+    // (even if a local edit landed in the same render as the cloud data).
+    const base = remoteBase.current ?? prevRef.current;
+    remoteBase.current = null;
+    prevRef.current = data;
     if (skipSave.current) {
-      skipSave.current = false;
+      skipSave.current = false; // another tab saved it (and queued it) already
       return;
     }
     const r = saveData(data);
     setSaveError(r.ok ? null : r.error);
+    if (data !== base) cloud.onLocalChange(base, data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   // Keep multiple open tabs in sync.
@@ -131,6 +151,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const isFav = (id: string) => data.favorites.some((f) => f.id === id);
     return {
       data,
+      cloud,
       profile: data.profile,
       saveError,
       toast,
@@ -223,7 +244,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setData({ ...normalizeData(null) });
       },
     };
-  }, [data, saveError, toast, showToast, dismissToast]);
+  }, [data, cloud, saveError, toast, showToast, dismissToast]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

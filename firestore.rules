@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// FuelFlow security rules.
+// Each person can only read and write their own documents under users/{their uid}.
+// Everything else is denied by default.
+// Paste this into Firebase console → Firestore Database → Rules → Publish.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isCollection(c) {
+      return c in ['entries', 'water', 'weights', 'planned', 'customFoods', 'favorites', 'savedMeals'];
+    }
+
+    // One record (a diary entry, a weigh-in, a recipe…): { json: string, updatedAt: timestamp }
+    function validRecord() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['json', 'updatedAt'])
+        && d.json is string && d.json.size() <= 100000
+        && d.updatedAt is timestamp;
+    }
+
+    // The account document: profile as JSON + a marker that changes on every sync.
+    function validAccountDoc() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['json', 'updatedAt', 'syncId'])
+        && (!('json' in d) || (d.json is string && d.json.size() <= 200000))
+        && (!('syncId' in d) || (d.syncId is string && d.syncId.size() <= 64))
+        && (!('updatedAt' in d) || d.updatedAt is timestamp);
+    }
+
+    match /users/{uid} {
+      allow get, delete: if signedInAs(uid);
+      allow create, update: if signedInAs(uid) && validAccountDoc();
+
+      match /{collection}/{docId} {
+        allow read, delete: if signedInAs(uid) && isCollection(collection);
+        allow create, update: if signedInAs(uid) && isCollection(collection) && validRecord();
+      }
+    }
+  }
+}

@@ -24,14 +24,21 @@ FuelFlow is a mobile-first calorie counter, nutrition tracker and AI nutrition c
   - Calorie, protein and water charts for 7 or 30 days, comparison with the previous period, and logging consistency.
   - Days you didn't log are shown as gaps, never as zero.
 - **AI nutrition coach** – A chat screen for food questions: meal ideas that fit what's left of today's calories, weekly reviews, label reading, eating out and cravings. It covers food only, not workouts. It sees your food log **only if you allow it**, and then only a short summary built from your real records. Its rules rule out crash diets, diagnoses and pushing supplements, and steer medical situations to a professional. To connect it, go to **Profile → AI nutrition coach** and paste either a **free Gemini key** (from aistudio.google.com/apikey; daily limits apply, and Google may use free-tier conversations to improve its products) or a **Claude key** (pay as you go, usually under 1 cent per question). The key is stored only in that browser and is sent only to that AI provider. It is never included in backups or committed to GitHub. If one of Google's free models is retired, FuelFlow automatically tries the next one (`GEMINI_MODELS` in `src/lib/ai.ts`). If other people will use the app, the private-server option in [`server/`](./server/README.md) keeps the key off their phones instead. Everything else in FuelFlow works without the coach.
+- **Accounts and sync** – Optional free account (email and password) with cloud backup and sync across phones, password reset and full account deletion. It's switched on once `src/firebaseConfig.ts` is filled in.
 - **Profile** – Body and goal details with target recalculation, target editing, units, meals, coach setup, JSON backup and restore, diary and progress CSV export, and delete-all.
 - **Premium** – A plan comparison page. Billing isn't connected, so no one can be charged and every feature stays free (see `src/lib/plans.ts`).
 
 ## Where your data lives
 
-All data is stored **only in this browser** (`localStorage`), so there are no accounts and no sync between devices. Clearing browser data erases it, which is why Profile → *Download full backup* exists.
+- **Without an account:** everything stays in that browser (`localStorage`). Clearing browser data erases it, which is why Profile → *Download full backup* exists.
+- **With a free account (Firebase):** the phone still keeps its own copy, so the app is instant and works offline. Changes are also backed up to the person's private Firestore account and kept in sync on every phone they sign in on.
+  - Changes made offline are queued and uploaded when the connection returns.
+  - Signing in on a phone that already has data keeps both sides.
+  - Signing out removes the data from that phone.
+  - *Delete my account* removes everything.
+  - Setup steps are in [FIREBASE.md](./FIREBASE.md), and the security rules are in [firestore.rules](./firestore.rules).
 
-Every read and write goes through `src/lib/storage.ts` and `src/lib/store.tsx`. That means a cloud backend such as Supabase can be added later without changing the screens.
+AI coach keys and chat history are never synced; they stay on the phone.
 
 If an older FuelFlow prototype stored meals under `fuelflow-meals`, they are imported once and the original key is left untouched.
 
@@ -64,8 +71,7 @@ tests/          unit tests and a mock coach server for local testing
 
 These are planned for later stages:
 
-- Reminders (they need push notifications and a backend)
-- Cloud accounts and sync
-- Real billing
+- Reminders (push notifications through Firebase Cloud Messaging)
+- Real billing (needs a payment provider that supports the Maldives)
 
 FuelFlow gives estimates for general wellbeing. It is not medical advice.

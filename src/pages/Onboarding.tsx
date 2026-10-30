@@ -6,6 +6,7 @@ import { ageFromBirthDate, isValidDateKey, todayKey } from '../lib/date';
 import { inToCm, lbToKg, displayWeight } from '../lib/units';
 import { Field, NumberInput, Segmented, parseNum } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { AuthSheet } from '../components/AuthSheet';
 
 const DIETS = ['Vegetarian', 'Vegan', 'Pescatarian', 'Halal', 'Dairy-free', 'Gluten-free', 'High protein', 'Low carb'];
 
@@ -29,6 +30,7 @@ export function Onboarding() {
   const [diet, setDiet] = useState<string[]>([]);
   const [tried, setTried] = useState(false);
   const [targets, setTargets] = useState<Targets | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
 
   const hCm = units.height === 'cm' ? parseNum(heightCm) : inToCm((parseNum(ft) || 0) * 12 + (parseNum(inch) || 0));
   const wv = parseNum(weight);
@@ -253,7 +255,17 @@ export function Onboarding() {
             Skip for now — use a standard 2,000 kcal target
           </button>
         )}
+        {step === 0 && store.cloud.enabled && !store.cloud.account && (
+          <p className="ob-signin">
+            Already use FuelFlow?{' '}
+            <button type="button" onClick={() => setAuthOpen(true)}>
+              Sign in
+            </button>
+          </p>
+        )}
+        {step === 0 && store.cloud.account && <p className="ob-signin">Signed in as {store.cloud.account.email}. Set up your profile to start.</p>}
       </div>
+      <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} />
     </div>
   );
 }

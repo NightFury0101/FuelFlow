@@ -11,6 +11,7 @@ import { Card, Field, NumberInput, Segmented, parseNum } from '../components/ui'
 import { Icon } from '../components/Icon';
 import { TargetReview } from './Onboarding';
 import { Link, useRoute } from '../router';
+import { AuthSheet } from '../components/AuthSheet';
 
 function download(name: string, text: string, type: string) {
   const blob = new Blob([text], { type });
@@ -50,6 +51,14 @@ export function Profile() {
 
       <div
         ref={(el) => {
+          refs.current.account = el;
+        }}
+      >
+        <AccountSection />
+      </div>
+
+      <div
+        ref={(el) => {
           refs.current.body = el;
         }}
       >
@@ -77,6 +86,151 @@ export function Profile() {
 
       <p className="muted small center foot-note">FuelFlow gives estimates for general wellbeing, not medical advice.</p>
     </div>
+  );
+}
+
+function timeAgo(ts: number | null): string {
+  if (!ts) return '';
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 45) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  return new Date(ts).toLocaleDateString();
+}
+
+function AccountSection() {
+  const store = useStore();
+  const { cloud } = store;
+  const [auth, setAuth] = useState<'in' | 'up' | null>(null);
+  const [confirmOut, setConfirmOut] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [pw, setPw] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  if (!cloud.enabled) {
+    return (
+      <Card title="Account & sync" icon="user">
+        <p className="muted small">Accounts aren’t switched on for this FuelFlow yet, so your data stays on this phone. Use “Download full backup” below to keep a copy.</p>
+      </Card>
+    );
+  }
+
+  if (!cloud.account) {
+    return (
+      <Card title="Account & sync" icon="user" className="account-card">
+        {cloud.state === 'error' && cloud.message && <p className="notice warn">{cloud.message}</p>}
+        <p className="small">Create a free account to back up your diary and use FuelFlow on any phone.</p>
+        <p className="muted small">Right now your data is only on this phone. Signing in adds it to your account — nothing is lost.</p>
+        <div className="sheet-actions">
+          <button className="btn btn-ghost" onClick={() => setAuth('in')}>
+            Sign in
+          </button>
+          <button className="btn btn-primary grow" onClick={() => setAuth('up')}>
+            Create account
+          </button>
+        </div>
+        <AuthSheet open={!!auth} initialMode={auth ?? 'in'} onClose={() => setAuth(null)} />
+      </Card>
+    );
+  }
+
+  const label =
+    cloud.state === 'syncing'
+      ? 'Syncing…'
+      : cloud.state === 'offline'
+        ? `Offline${cloud.pending ? ` — ${cloud.pending} change${cloud.pending === 1 ? '' : 's'} waiting` : ''}`
+        : cloud.state === 'error'
+          ? 'Sync problem'
+          : `Synced${cloud.lastSynced ? ` ${timeAgo(cloud.lastSynced)}` : ''}`;
+
+  const doSignOut = async (force: boolean) => {
+    setBusy(true);
+    const r = await cloud.signOut(force);
+    setBusy(false);
+    if (!r.ok) setConfirmOut(r.pending);
+    else store.showToast('Signed out — your data is safe in your account');
+  };
+
+  return (
+    <Card title="Account & sync" icon="user" className="account-card">
+      <div className="acct-row">
+        <span className="acct-avatar" aria-hidden="true">
+          {cloud.account.email.charAt(0).toUpperCase()}
+        </span>
+        <span className="acct-main">
+          <strong>{cloud.account.email}</strong>
+          <span className={`sync-state sync-${cloud.state}`}>
+            <span className="sync-dot" aria-hidden="true" /> {label}
+          </span>
+        </span>
+        <button className="icon-btn" aria-label="Sync now" title="Sync now" disabled={cloud.state === 'syncing'} onClick={() => void cloud.syncNow()}>
+          <Icon name="refresh" size={18} />
+        </button>
+      </div>
+      {cloud.message && cloud.state !== 'synced' && <p className={'notice' + (cloud.state === 'error' ? ' warn' : '')}>{cloud.message}</p>}
+      <p className="muted small">Your diary, recipes, plans, water and weight are backed up to your private account and kept in sync on every phone you sign in on.</p>
+
+      {confirmOut != null ? (
+        <div className="confirm-box">
+          <p className="small warn-text">
+            {confirmOut} change{confirmOut === 1 ? '' : 's'} on this phone {confirmOut === 1 ? 'hasn’t' : 'haven’t'} synced yet. If you sign out now {confirmOut === 1 ? 'it' : 'they'} will be lost.
+          </p>
+          <div className="sheet-actions">
+            <button className="btn btn-ghost" onClick={() => setConfirmOut(null)}>
+              Stay signed in
+            </button>
+            <button className="btn btn-danger grow" disabled={busy} onClick={() => void doSignOut(true)}>
+              Sign out anyway
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn btn-secondary block" disabled={busy} onClick={() => void doSignOut(false)}>
+          {busy ? 'Signing out…' : 'Sign out'}
+        </button>
+      )}
+      <p className="muted small">Signing out removes your data and coach settings from this phone. It stays safe in your account.</p>
+
+      <div className="danger-zone">
+        {!deleting ? (
+          <button className="btn btn-ghost danger block" onClick={() => (setDeleting(true), setErr(null))}>
+            <Icon name="trash" size={16} /> Delete my account
+          </button>
+        ) : (
+          <form
+            className="form"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setBusy(true);
+              setErr(null);
+              try {
+                await cloud.deleteAccount(pw);
+                store.showToast('Your account and all its data have been deleted');
+              } catch (x) {
+                setErr(x instanceof Error ? x.message : 'Couldn’t delete the account.');
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <p className="small">This permanently deletes your account and everything in it, on every device. It can’t be undone. Download a backup first if you want to keep a copy.</p>
+            <Field label="Enter your password to confirm">
+              <input type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} aria-label="Password to confirm deletion" />
+            </Field>
+            {err && <p className="notice warn">{err}</p>}
+            <div className="sheet-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => (setDeleting(false), setPw(''))}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-danger grow" disabled={!pw || busy}>
+                {busy ? 'Deleting…' : 'Delete account forever'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -579,7 +733,9 @@ function DataSection() {
   return (
     <Card title="Your data" icon="lock">
       <p className="muted small">
-        Everything is stored only in this browser on this device — there’s no account and nothing is sent to a server (except questions you ask the AI coach, if you connect it). Clearing browser data erases it, so export a backup now and then.
+        {store.cloud.account
+          ? 'Your data is on this phone and backed up to your account. AI coach keys and chats stay on this phone only.'
+          : 'Everything is stored only in this browser on this device — nothing is sent to a server (except questions you ask the AI coach, if you connect it). Clearing browser data erases it, so create an account or export a backup now and then.'}
       </p>
       <p className="small">
         {d.entries.length} food entries · {d.weights.length} weigh-ins · {d.water.length} water entries
@@ -627,7 +783,7 @@ function DataSection() {
           </button>
         ) : (
           <>
-            <Field label='Type "DELETE" to erase everything on this device'>
+            <Field label={store.cloud.account ? 'Type "DELETE" to erase your FuelFlow data here and in your account (the account itself stays)' : 'Type "DELETE" to erase everything on this device'}>
               <input value={confirm} onChange={(e) => setConfirm(e.target.value)} autoCapitalize="characters" />
             </Field>
             <div className="sheet-actions">
