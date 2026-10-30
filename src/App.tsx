@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { StoreProvider, useStore, mealForNow } from './lib/store';
 import { todayKey } from './lib/date';
-import { showPremium } from './lib/platform';
+import { showPremium } from './lib/billing';
+import { PremiumProvider } from './lib/premium';
 import { useReminderSync } from './lib/useReminders';
 import { applyTheme, resolveTheme } from './lib/theme';
 import { AddFoodSheet } from './components/AddFoodSheet';
@@ -180,7 +181,9 @@ function Shell() {
 export function App() {
   return (
     <StoreProvider>
-      <Shell />
+      <PremiumProvider>
+        <Shell />
+      </PremiumProvider>
     </StoreProvider>
   );
 }

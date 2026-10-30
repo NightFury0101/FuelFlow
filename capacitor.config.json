@@ -5,7 +5,6 @@
   "backgroundColor": "#0b0d0c",
   "ios": {
     "contentInset": "never",
-    "backgroundColor": "#0b0d0c",
-    "scheme": "FuelFlow"
+    "backgroundColor": "#0b0d0c"
   }
 }

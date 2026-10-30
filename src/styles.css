@@ -686,3 +686,19 @@ input[type='number']::-webkit-inner-spin-button { opacity: 0.4; }
 .reminder-day { flex: 0 0 76px; width: 76px; }
 .reminder-time, .reminder-day { min-width: 0; padding: 8px 10px; border-radius: 12px; font-size: 15px; font-variant-numeric: tabular-nums; }
 .reminder-time:disabled, .reminder-day:disabled { opacity: .45; }
+
+/* Premium purchase */
+.plan-options { display: flex; flex-direction: column; gap: 10px; }
+.plan-option { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border-radius: 16px; background: var(--surface); border: 1.5px solid var(--border); text-align: left; color: var(--text); min-height: 64px; }
+.plan-option.on { border-color: var(--accent); background: var(--accent-soft); }
+.plan-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border-strong); flex: 0 0 auto; position: relative; }
+.plan-option.on .plan-radio { border-color: var(--accent); }
+.plan-option.on .plan-radio::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent); }
+.plan-main { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.plan-main strong { font-size: 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.plan-price { display: flex; flex-direction: column; align-items: flex-end; }
+.plan-price strong { font-family: var(--display); font-size: 18px; font-variant-numeric: tabular-nums; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 99px; background: var(--accent-fill); color: #12160a; font-size: 11.5px; font-weight: 700; letter-spacing: 0.01em; }
+.fine-print { line-height: 1.5; font-size: 12px; }
+.premium-active .big-num { display: flex; align-items: center; gap: 8px; }
+a.btn { text-decoration: none; text-align: center; }

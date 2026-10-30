@@ -4,7 +4,7 @@ import { Link } from '../router';
 
 // Keep these accurate when the app changes. Last reviewed for: on-device storage, optional
 // Firebase accounts, optional AI coach with the user's own Gemini/Claude key, Open Food Facts search.
-export const LEGAL_UPDATED = '30 October 2026';
+export const LEGAL_UPDATED = '31 October 2026';
 const CONTACT_URL = 'https://github.com/NightFury0101/FuelFlow/issues';
 /** Support email shown on the Help & support page. App Store reviewers expect a way to reach you;
  *  set this to an address you check (e.g. 'support@yourdomain.com'). null = GitHub page only. */
@@ -45,10 +45,10 @@ export function Privacy() {
         <h1>Privacy policy</h1>
         <p className="muted small">Last updated {LEGAL_UPDATED}</p>
       </header>
-      <p className="legal-lead">FuelFlow keeps your data on your phone by default. Nothing is sent to us unless you create an account, and we never sell your data or show ads.</p>
+      <p className="legal-lead">FuelFlow keeps your data on your phone by default. Nothing is sent to us unless you create an account or use the Premium coach, and we never sell your data or show ads.</p>
 
       <Section title="If you don’t create an account">
-        <p>Everything you enter is stored only in your browser on your device. We don’t receive it. If you clear your browser data or lose your phone, it’s gone — so download a backup from Profile now and then.</p>
+        <p>Everything you enter is stored only on your device (in the app, or in your browser on the website). We don’t receive it. If you delete the app, clear your browser data or lose your phone, it’s gone — so download a backup from Profile now and then.</p>
       </Section>
 
       <Section title="If you create an account">
@@ -72,6 +72,16 @@ export function Privacy() {
           <li>That company’s own terms and privacy policy apply. Google may use conversations on Gemini’s free tier to improve its products.</li>
         </ul>
         <p>Your AI key and your chat history stay on your phone. They aren’t stored in your account.</p>
+      </Section>
+
+      <Section title="FuelFlow Premium (iPhone app)">
+        <ul>
+          <li>Subscriptions are bought and paid through Apple. We never see your card or payment details.</li>
+          <li>
+            <strong>RevenueCat</strong> checks your purchase with Apple for us. It receives a random ID for your app install, what you bought and when — not your name, email or diary.
+          </li>
+          <li>When you ask the built-in Premium coach a question, your question, recent chat messages and (only if you switch it on) the food-log summary go to our coach server, which passes them to the AI company (Anthropic or Google) and sends back the answer. Our server doesn’t keep your messages; it only counts questions per day to keep the service fair.</li>
+        </ul>
       </Section>
 
       <Section title="Other services FuelFlow uses">
@@ -154,7 +164,15 @@ export function Terms() {
       </Section>
 
       <Section title="Premium">
-        <p>FuelFlow doesn’t sell anything at the moment. If paid features are introduced, their price and terms will be shown clearly before you pay. The features you use for free today will stay free.</p>
+        <p>FuelFlow Premium is an optional subscription sold in the iPhone app through Apple. It adds the built-in AI nutrition coach; everything else in FuelFlow stays free.</p>
+        <ul>
+          <li>The price and billing period are shown before you confirm. Payment is charged to your Apple ID.</li>
+          <li>It renews automatically unless you cancel at least 24 hours before the end of the current period. Manage or cancel any time in your Apple ID settings.</li>
+          <li>If a free trial is offered, any unused part of it ends when you buy a subscription.</li>
+          <li>Refunds are handled by Apple under its rules — request one at reportaproblem.apple.com.</li>
+          <li>The Premium coach has a fair daily question limit. Its answers are general suggestions, not medical advice.</li>
+          <li>Apple’s standard licence agreement for apps (the Apple EULA) also applies to the iPhone app.</li>
+        </ul>
       </Section>
 
       <Section title="Changes and law">
@@ -205,7 +223,8 @@ export function Support() {
 
       <Section title="Common questions">
         <Faq q="Is FuelFlow free?">
-          <p>Yes. Every feature is free, there are no ads, and nothing can be bought in the app. The AI coach uses your own free Gemini key or a pay-as-you-go Claude key, which you pay the AI company for directly (Gemini’s free tier costs nothing).</p>
+          <p>Yes. Tracking, recipes, meal plans, progress and reminders are free, with no ads. The AI coach is free with your own Gemini key (Gemini’s free tier costs nothing).</p>
+          <p>In the iPhone app you can also choose FuelFlow Premium, a subscription that builds the coach in so you don’t need a key. It’s optional and you can cancel any time in your Apple ID settings.</p>
         </Faq>
         <Faq q="Where is my data stored?">
           <p>On your phone. If you create an account, a copy is also backed up to your private account so it syncs across your devices. Nobody else can read it.</p>
@@ -215,6 +234,9 @@ export function Support() {
         </Faq>
         <Faq q="How are my calorie and protein targets worked out?">
           <p>From your age, height, weight, activity and goal using the Mifflin–St Jeor formula, with a safe pace of change. You can change them in Profile → Daily targets. They’re estimates, not medical advice.</p>
+        </Faq>
+        <Faq q="How do I restore or cancel Premium?">
+          <p>On a new phone, go to Profile → FuelFlow Premium → Restore purchases (use the same Apple ID). To cancel, open Settings → your name → Subscriptions on your iPhone, or tap Manage subscription in FuelFlow. Deleting the app doesn’t cancel it.</p>
         </Faq>
         <Faq q="How do I set up the AI coach?">
           <p>Go to Profile → AI nutrition coach, choose Gemini (free) or Claude, and paste your key. The key stays on your device. Your diary is only shared with the coach if you turn that on.</p>

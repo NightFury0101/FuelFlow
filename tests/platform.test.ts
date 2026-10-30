@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isNativeApp, showPremium } from '../src/lib/platform';
+import { isNativeApp } from '../src/lib/platform';
+import { showPremium } from '../src/lib/billing';
 
 const g = globalThis as unknown as { window?: unknown };
 

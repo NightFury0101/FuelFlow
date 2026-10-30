@@ -4,8 +4,9 @@ FuelFlow's web code is wrapped as a real iPhone app with [Capacitor](https://cap
 The same code still runs the website; inside the app a few things change automatically
 (`src/lib/platform.ts`):
 
-- **Premium is hidden.** Apple only allows paid features sold through its own in-app purchases,
-  and showing plans you can't buy can get an app rejected. Everything is free, so nothing is lost.
+- **Premium is sold with Apple in-app purchase** (through RevenueCat). Until you fill in
+  `src/premiumConfig.ts` the app hides Premium completely, because showing plans you can't buy
+  gets apps rejected. Setup: see [PREMIUM.md](./PREMIUM.md).
 - **Backups use the share sheet** (Save to Files, AirDrop, email) instead of a browser download.
 - **No service worker.** The app carries all its files, so it already works offline.
 - **Daily reminders** (Profile → Reminders, app only): meals, water and a weekly weigh-in. They
@@ -24,7 +25,7 @@ project (`FuelFlow-ios-project`).
 | Sign in with Apple | Not required: it's only needed when an app offers Google/Facebook-style logins. FuelFlow uses email + password, and an account is optional. |
 | Delete account inside the app | Done — Profile → Account & sync → Delete my account |
 | Explain camera / microphone use | Not needed — FuelFlow uses neither |
-| Be clear about paid features | Done — nothing is sold; Premium is hidden in the app |
+| Be clear about paid features | Done — price, period, trial and auto-renew terms shown before buying; Restore purchases button; Terms and Privacy links on the purchase screen |
 | Support, privacy and terms web pages | Done — see URLs below. Add a support email in `src/pages/Legal.tsx` (`SUPPORT_EMAIL`). |
 | Health disclaimer | Done — targets are labelled as estimates, with advice to see a doctor for under-18s, pregnancy and medical conditions |
 
@@ -60,7 +61,8 @@ Codemagic or Ionic Appflow that signs and uploads for you.
 
 ## App Store Connect answers
 
-- **Category:** Health & Fitness. **Price:** Free. **In-app purchases:** none.
+- **Category:** Health & Fitness. **Price:** Free. **In-app purchases:** FuelFlow Premium
+  (auto-renewable subscription, monthly and yearly) — set up as in PREMIUM.md.
 - **Age rating:** answer "None" to every question → 4+.
 - **App Privacy** ("nutrition label"):
   - *Without an account* nothing leaves the phone except what's listed next.
@@ -69,6 +71,11 @@ Codemagic or Ionic Appflow that signs and uploads for you.
     user, App Functionality (only stored when someone creates an account).
   - *User Content → Other* — questions sent to the AI coach go to Google or Anthropic using the
     person's own key; not linked to identity by FuelFlow, App Functionality.
+  - *Purchases → Purchase history* — via RevenueCat, linked to a random app user ID, App
+    Functionality.
+  - *Identifiers → User ID* — RevenueCat's random app user ID, App Functionality.
+  - *User Content → Other* (Premium coach) — questions go through your coach server to the AI
+    company, App Functionality, not kept.
   - Tracking: **No**. Data used for ads: **No**.
 - **Export compliance:** already answered in the app (standard HTTPS only).
 - **Review notes** (paste this):
@@ -76,7 +83,9 @@ Codemagic or Ionic Appflow that signs and uploads for you.
   > optional (Profile → Account & sync). Account deletion: Profile → Account & sync → Delete my
   > account. The optional AI nutrition coach needs the user's own free Google Gemini key
   > (Profile → AI nutrition coach); every other feature works without it. Daily reminders
-  > (Profile → Reminders) use iPhone notifications. Nothing is sold in the app.
+  > (Profile → Reminders) use iPhone notifications. FuelFlow Premium (Profile → FuelFlow
+  > Premium) is an auto-renewable subscription that adds a built-in coach with no key needed;
+  > use a Sandbox tester account to try it. Restore purchases is on the same screen.
 
 ## Avoiding "minimum functionality" rejections (guideline 4.2)
 
@@ -132,7 +141,15 @@ Copy these into App Store Connect (limits in brackets).
 > • Works offline — your diary lives on your phone
 > • Optional account to back up and sync between devices
 > • Export everything any time, or delete your account in the app
-> • No ads. Nothing to buy.
+> • No ads. Everything above is free.
+>
+> FUELFLOW PREMIUM (OPTIONAL)
+> • The AI nutrition coach built in — no key, no setup
+> • Auto-renewing subscription, monthly or yearly. Payment is charged to your Apple ID and
+>   renews unless cancelled at least 24 hours before the period ends. Manage or cancel in your
+>   Apple ID settings.
+> • Terms: https://nightfury0101.github.io/FuelFlow/#/terms
+> • Privacy: https://nightfury0101.github.io/FuelFlow/#/privacy
 >
 > FuelFlow gives estimates for general wellbeing, not medical advice. If you're under 18,
 > pregnant or have a medical condition, talk to a doctor before changing your diet.

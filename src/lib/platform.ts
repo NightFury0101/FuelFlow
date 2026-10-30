@@ -15,12 +15,3 @@ export function isNativeApp(): boolean {
     return false;
   }
 }
-
-/**
- * Whether the Premium screen should be shown. App stores only allow paid features sold through
- * their own in-app purchases, and plans you can't buy can get the app rejected, so the store
- * apps hide Premium until in-app purchases are added.
- */
-export function showPremium(): boolean {
-  return !isNativeApp();
-}

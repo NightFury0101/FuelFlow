@@ -132,7 +132,7 @@ export async function askCoach(ai: AiConfig, history: CoachMessage[], context: s
   try {
     res = await fetch(ai.url.replace(/\/$/, '') + '/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(ai.kind === 'premium' ? { 'X-FuelFlow-User': ai.userId } : {}) },
       body: JSON.stringify({ messages, context }),
       signal,
     });
@@ -140,8 +140,13 @@ export async function askCoach(ai: AiConfig, history: CoachMessage[], context: s
     if ((e as Error).name === 'AbortError') throw e;
     throw new CoachError('Couldn’t reach the coach. Check your connection and try again.');
   }
-  if (res.status === 429) throw new CoachError('The coach is getting a lot of questions. Wait a minute and try again.');
-  if (res.status === 404) throw new CoachError('Your server doesn’t have the coach yet. Update it with the latest server/coach-worker.js.');
+  if (ai.kind === 'premium' && res.status === 402) throw new CoachError('Your Premium subscription couldn’t be confirmed. Check Profile → FuelFlow Premium, or tap Restore purchases.');
+  if (res.status === 429) {
+    const j = (await res.json().catch(() => null)) as { error?: unknown; limit?: unknown } | null;
+    if (j?.limit) throw new CoachError('You’ve reached today’s question limit for the coach. It resets tomorrow.');
+    throw new CoachError('The coach is getting a lot of questions. Wait a minute and try again.');
+  }
+  if (res.status === 404) throw new CoachError(ai.kind === 'premium' ? 'The coach is being updated. Try again later.' : 'Your server doesn’t have the coach yet. Update it with the latest server/coach-worker.js.');
   if (!res.ok) throw new CoachError(`The coach had a problem (error ${res.status}). Try again in a moment.`);
   const j = (await res.json().catch(() => null)) as { reply?: unknown } | null;
   const reply = typeof j?.reply === 'string' ? j.reply.trim() : '';

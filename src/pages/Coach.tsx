@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useStore } from '../lib/store';
 import { useAi } from '../lib/useAi';
+import { usePremium } from '../lib/premium';
 import { safeLocalStorage, uid } from '../lib/storage';
 import { askCoach, buildContext, CoachError, loadMessages, saveMessages, STARTERS, MAX_CHARS, type CoachMessage } from '../lib/coach';
 import { Card } from '../components/ui';
@@ -55,6 +56,7 @@ export function Coach() {
   const store = useStore();
   const profile = store.profile!;
   const ai = useAi();
+  const premium = usePremium();
   const ls = safeLocalStorage();
   const [messages, setMessages] = useState<CoachMessage[]>(() => loadMessages(ls));
   const [input, setInput] = useState('');
@@ -129,10 +131,24 @@ export function Coach() {
             </div>
           </div>
           <h2>Connect your nutrition coach</h2>
-          <p className="muted">Ask anything about food — meal ideas that fit your day, labels, cravings, eating out. Connect it once with a free Gemini key (or Claude); the key stays on this device.</p>
-          <Link to="/profile?section=ai" className="btn btn-primary block">
-            Add API key
-          </Link>
+          {premium.available && premium.coachUrl ? (
+            <>
+              <p className="muted">Ask anything about food — meal ideas that fit your day, labels, cravings, eating out. With Premium the coach is built in: no key, no setup.</p>
+              <Link to="/premium" className="btn btn-primary block">
+                <Icon name="crown" size={18} /> Get Premium
+              </Link>
+              <Link to="/profile?section=ai" className="btn btn-ghost block">
+                Or use your own free key
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="muted">Ask anything about food — meal ideas that fit your day, labels, cravings, eating out. Connect it once with a free Gemini key (or Claude); the key stays on this device.</p>
+              <Link to="/profile?section=ai" className="btn btn-primary block">
+                Add API key
+              </Link>
+            </>
+          )}
         </Card>
       ) : (
         <>

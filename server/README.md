@@ -20,9 +20,14 @@ Go to the Worker's **Settings → Variables and Secrets** and add:
 
 | Name | Type | Value |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | Secret | your key from step 1 |
-| `ALLOWED_ORIGIN` | Text | `https://nightfury0101.github.io` (your Pages domain, no trailing slash) |
-| `MODEL` | Text (optional) | defaults to `claude-sonnet-5-5` |
+| `ANTHROPIC_API_KEY` | Secret | your key from step 1 (or use `GEMINI_API_KEY` instead) |
+| `GEMINI_API_KEY` | Secret (optional) | a Google AI Studio key, if you'd rather use Gemini |
+| `ALLOWED_ORIGIN` | Text | `https://nightfury0101.github.io,capacitor://localhost` (your Pages domain and the iPhone app, comma-separated, no trailing slash) |
+| `MODEL` / `GEMINI_MODEL` | Text (optional) | defaults to `claude-sonnet-5-5` / `gemini-3.6-flash` |
+
+**Selling it as Premium?** Also add `REVENUECAT_SECRET_KEY` (and optionally `DAILY_LIMIT`). The
+Worker then only answers people with an active FuelFlow Premium subscription — see
+[PREMIUM.md](../PREMIUM.md).
 
 Requests from any other website are refused, so other people can't use your key through the Worker.
 

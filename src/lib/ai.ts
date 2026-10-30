@@ -23,7 +23,10 @@ export const PROVIDER_INFO: Record<Provider, { name: string; console: string; co
   claude: { name: 'Claude', console: 'https://console.anthropic.com/settings/keys', consoleLabel: 'console.anthropic.com', placeholder: 'sk-ant-…' },
 };
 
-export type AiConfig = { kind: 'key'; provider: Provider; key: string } | { kind: 'server'; url: string };
+export type AiConfig = { kind: 'key'; provider: Provider; key: string } | { kind: 'server'; url: string } | { kind: 'premium'; url: string; userId: string };
+
+/** The built-in coach for Premium subscribers (FuelFlow's own server). */
+export type PremiumCoach = { url: string; userId: string } | null;
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -72,8 +75,12 @@ export function maskKey(key: string): string {
   return key.length > 14 ? `${key.slice(0, 8)}…${key.slice(-4)}` : '••••';
 }
 
-/** Which connection to use: the active provider's key, then any saved key, then the server URL. */
-export function resolveAi(serverUrl?: string): AiConfig | null {
+/**
+ * Which connection to use: the Premium coach for subscribers, then the active provider's key,
+ * then any saved key, then the user's own server URL.
+ */
+export function resolveAi(serverUrl?: string, premium: PremiumCoach = null): AiConfig | null {
+  if (premium?.url && premium.userId) return { kind: 'premium', url: premium.url, userId: premium.userId };
   const active = getProvider();
   const order: Provider[] = active === 'claude' ? ['claude', 'gemini'] : ['gemini', 'claude'];
   for (const p of order) {

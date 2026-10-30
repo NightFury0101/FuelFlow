@@ -6,10 +6,13 @@ import { ageFromBirthDate, isValidDateKey, todayKey } from '../lib/date';
 import { backupJson, diaryCsv, progressCsv, uid } from '../lib/storage';
 import { displayWater, displayWeight, weightToKg, weightValue, waterToMl, ML_PER_FLOZ } from '../lib/units';
 import { getApiKey, getProvider, isValidEndpoint, looksLikeKey, maskKey, PROVIDER_INFO, resolveAi, setApiKey, setProvider, testKey, type Provider } from '../lib/ai';
-import { isNativeApp, showPremium } from '../lib/platform';
+import { isNativeApp } from '../lib/platform';
+import { showPremium } from '../lib/billing';
 import { loadReminders, saveReminders, type ReminderItem, type ReminderSettings } from '../lib/reminders';
 import { checkPermission, remindersSupported, requestPermission, type Permission } from '../lib/notifications';
-import { BILLING_ENABLED } from '../lib/plans';
+import { PREMIUM_PITCH } from '../lib/plans';
+import { usePremium } from '../lib/premium';
+import { usePremiumCoach } from '../lib/useAi';
 import { Card, Field, NumberInput, Segmented, parseNum } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { TargetReview } from './Onboarding';
@@ -89,14 +92,7 @@ export function Profile() {
         <CoachSection />
       </div>
 
-      {showPremium() && (
-      <Card title="FuelFlow Premium" icon="crown">
-        <p className="muted small">{BILLING_ENABLED ? 'Manage your subscription.' : 'You’re on the free plan. Every feature is currently available while billing isn’t set up.'}</p>
-        <Link to="/premium" className="btn btn-secondary sm">
-          See plans
-        </Link>
-      </Card>
-      )}
+      {showPremium() && <PremiumCard />}
 
       <DataSection />
 
@@ -116,6 +112,19 @@ export function Profile() {
         </Link>
       </p>
     </div>
+  );
+}
+
+function PremiumCard() {
+  const premium = usePremium();
+  const on = premium.status === 'premium';
+  return (
+    <Card title="FuelFlow Premium" icon="crown">
+      <p className="muted small">{on ? 'You’re Premium — thank you! Your built-in AI coach is ready.' : PREMIUM_PITCH}</p>
+      <Link to="/premium" className="btn btn-secondary sm">
+        {on ? 'Manage Premium' : premium.available ? 'See Premium' : 'What’s in Premium'}
+      </Link>
+    </Card>
   );
 }
 
@@ -663,7 +672,8 @@ function CoachSection() {
   const provider: Provider | null = mode === 'server' ? null : mode;
   const keyOk = provider ? looksLikeKey(provider, key) : false;
   const savedKey = provider ? saved[provider] : null;
-  const using = resolveAi(p.scannerEndpoint);
+  const premiumCoach = usePremiumCoach();
+  const using = resolveAi(p.scannerEndpoint, premiumCoach);
 
   const refresh = () => {
     setSaved({ gemini: getApiKey('gemini'), claude: getApiKey('claude') });
@@ -739,9 +749,10 @@ function CoachSection() {
       <div className="form">
         {using && (
           <p className="muted small">
-            Coach is using: <strong className="fg">{using.kind === 'server' ? 'your own server' : PROVIDER_INFO[using.provider].name}</strong>
+            Coach is using: <strong className="fg">{using.kind === 'premium' ? 'FuelFlow Premium (built in)' : using.kind === 'server' ? 'your own server' : PROVIDER_INFO[using.provider].name}</strong>
           </p>
         )}
+        {using?.kind === 'premium' && <p className="notice ok small">Your Premium coach is ready — no key needed. Anything you set up below is only used if Premium ends.</p>}
         <Segmented<Mode>
           label="Which AI to use"
           value={mode}

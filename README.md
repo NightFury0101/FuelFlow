@@ -31,7 +31,8 @@ FuelFlow is a mobile-first calorie counter, nutrition tracker and AI nutrition c
 - **Appearance** – Dark by default, with a Light option or *Match phone*. The choice is saved in the profile, so it syncs with the account.
 - **Works offline** – A service worker (`src/sw-template.js`, filled in by `build.mjs`) saves the app on the first visit, so it opens and works without a connection. Account data, food searches and AI requests always go to the network.
 - **Privacy policy and terms** – In-app pages (`#/privacy`, `#/terms`) linked from onboarding, sign-up and Profile. They describe exactly how the app handles data, and should be reviewed before a public launch.
-- **Premium** – A plan comparison page. Billing isn't connected, so no one can be charged and every feature stays free (see `src/lib/plans.ts`).
+- **Premium** – An optional subscription sold in the iPhone app through Apple in-app purchase (RevenueCat). It adds the AI coach built in, with no key. The purchase screen shows price, period, trial and auto-renew terms, with Restore purchases and Manage subscription. The coach server checks the subscription with RevenueCat before answering. Switched on once `src/premiumConfig.ts` is filled in — see [PREMIUM.md](./PREMIUM.md). The website only explains Premium.
+- **iPhone app** – Capacitor wraps the same code; daily meal, water and weigh-in reminders; App Store checklist, listing text and screenshots in [IOS.md](./IOS.md) and `store/`.
 
 ## Where your data lives
 
@@ -76,7 +77,7 @@ tests/          unit tests and a mock coach server for local testing
 
 These are planned for later stages:
 
-- Reminders (push notifications through Firebase Cloud Messaging)
-- Real billing (needs a payment provider that supports the Maldives)
+- Android app (Google Play billing for Premium)
+- Sharing progress with a trainer
 
 FuelFlow gives estimates for general wellbeing. It is not medical advice.
