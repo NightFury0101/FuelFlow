@@ -274,6 +274,45 @@ function BodySection() {
   const [special, setSpecial] = useState<SpecialCircumstance>(p.special);
   const [review, setReview] = useState<{ targets: Targets; result: ReturnType<typeof calculateTargets> } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // True once a detail has been saved since the targets were last worked out.
+  const [stale, setStale] = useState(false);
+
+  // Every detail saves as soon as it changes (or when you leave the field), so nothing is lost
+  // by switching screens. Targets are only recalculated when you ask.
+  const save = (patch: Partial<typeof p>) => {
+    store.updateProfile(patch);
+    setStale(true);
+  };
+  const saveBirth = (v: string) => {
+    setBirth(v);
+    if (isValidDateKey(v) && v !== p.birthDate) save({ birthDate: v });
+  };
+  const saveHeight = () => {
+    const h = Math.round(parseNum(height));
+    if (h >= 100 && h <= 250 && h !== p.heightCm) save({ heightCm: h });
+  };
+  const saveGoalWeight = () => {
+    if (!goalWeight.trim()) {
+      if (p.goalWeightKg != null) save({ goalWeightKg: undefined });
+      return;
+    }
+    const kg = Math.round(weightToKg(parseNum(goalWeight), u) * 10) / 10;
+    if (kg >= 30 && kg <= 350 && kg !== p.goalWeightKg) save({ goalWeightKg: kg });
+  };
+  // Current weight is a weigh-in: today's is updated, or a new one is added for today.
+  // Earlier weigh-ins are never changed, so the progress history stays true.
+  const saveWeight = () => {
+    const kg = Math.round(weightToKg(parseNum(weight), u) * 10) / 10;
+    if (!(kg >= 30 && kg <= 350)) return;
+    if (currentKg != null && Math.abs(kg - currentKg) < 0.05) return;
+    const today = todayKey();
+    const todays = store.data.weights.find((w) => w.date === today);
+    if (todays) store.updateWeight(todays.id, { kg });
+    else store.addWeight({ date: today, kg });
+    if (p.startWeightKg == null) store.updateProfile({ startWeightKg: kg });
+    setStale(true);
+    store.showToast(`Weight saved for today: ${displayWeight(kg, u)}`);
+  };
 
   const recalc = () => {
     const age = isValidDateKey(birth) ? ageFromBirthDate(birth) : NaN;
@@ -306,8 +345,9 @@ function BodySection() {
       setupIncomplete: false,
       startWeightKg: p.startWeightKg ?? Math.round(weightToKg(parseNum(weight), u) * 10) / 10,
     });
-    if (!latest) store.addWeight({ date: todayKey(), kg: Math.round(weightToKg(parseNum(weight), u) * 10) / 10 });
+    saveWeight();
     setReview(null);
+    setStale(false);
     store.showToast('Profile and targets updated');
   };
 
@@ -321,7 +361,10 @@ function BodySection() {
           <Segmented<Sex>
             label="Sex"
             value={sex}
-            onChange={setSex}
+            onChange={(v) => {
+              setSex(v);
+              if (v !== p.sex) save({ sex: v });
+            }}
             options={[
               { value: 'female', label: 'Female' },
               { value: 'male', label: 'Male' },
@@ -331,23 +374,26 @@ function BodySection() {
         </Field>
         <div className="row-2">
           <Field label="Date of birth">
-            <input type="date" value={birth} max={todayKey()} onChange={(e) => setBirth(e.target.value)} />
+            <input type="date" value={birth} max={todayKey()} onChange={(e) => saveBirth(e.target.value)} />
           </Field>
           <Field label="Height">
-            <NumberInput value={height} onChange={setHeight} suffix="cm" ariaLabel="Height in cm" />
+            <NumberInput value={height} onChange={setHeight} onCommit={saveHeight} suffix="cm" ariaLabel="Height in cm" />
           </Field>
           <Field label="Current weight">
-            <NumberInput value={weight} onChange={setWeight} step={0.1} suffix={u.weight} ariaLabel="Current weight" />
+            <NumberInput value={weight} onChange={setWeight} onCommit={saveWeight} step={0.1} suffix={u.weight} ariaLabel="Current weight" />
           </Field>
           <Field label="Goal weight">
-            <NumberInput value={goalWeight} onChange={setGoalWeight} step={0.1} suffix={u.weight} ariaLabel="Goal weight" />
+            <NumberInput value={goalWeight} onChange={setGoalWeight} onCommit={saveGoalWeight} step={0.1} suffix={u.weight} ariaLabel="Goal weight" />
           </Field>
         </div>
         <Field label="Goal">
           <Segmented<Goal>
             label="Goal"
             value={goal}
-            onChange={setGoal}
+            onChange={(v) => {
+              setGoal(v);
+              if (v !== p.goal) save({ goal: v });
+            }}
             options={[
               { value: 'lose', label: 'Lose' },
               { value: 'maintain', label: 'Maintain' },
@@ -356,7 +402,11 @@ function BodySection() {
           />
         </Field>
         <Field label="Activity">
-          <select value={activity} onChange={(e) => setActivity(e.target.value as Activity)}>
+          <select value={activity} onChange={(e) => {
+              const v = e.target.value as Activity;
+              setActivity(v);
+              if (v !== p.activity) save({ activity: v });
+            }}>
             {(Object.keys(ACTIVITY) as Activity[]).map((a) => (
               <option key={a} value={a}>
                 {ACTIVITY[a].label} — {ACTIVITY[a].hint}
@@ -365,7 +415,11 @@ function BodySection() {
           </select>
         </Field>
         <Field label="Special circumstances">
-          <select value={special} onChange={(e) => setSpecial(e.target.value as SpecialCircumstance)}>
+          <select value={special} onChange={(e) => {
+              const v = e.target.value as SpecialCircumstance;
+              setSpecial(v);
+              if (v !== p.special) save({ special: v });
+            }}>
             <option value="none">None</option>
             <option value="pregnant">Pregnant</option>
             <option value="breastfeeding">Breastfeeding</option>
@@ -373,6 +427,7 @@ function BodySection() {
           </select>
         </Field>
         {err && <p className="notice warn">{err}</p>}
+        {stale && !review && <p className="notice">Your details are saved. Your daily targets still use the old ones — recalculate to update them.</p>}
         {!review && (
           <button className="btn btn-secondary" onClick={recalc}>
             <Icon name="refresh" size={16} /> Recalculate targets

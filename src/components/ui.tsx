@@ -112,10 +112,24 @@ export function MacroPills({ p, c, f }: { p: number; c: number; f: number }) {
   );
 }
 
-export function NumberInput({ value, onChange, min = 0, max, step = 1, ariaLabel, suffix, id }: { value: string; onChange: (v: string) => void; min?: number; max?: number; step?: number; ariaLabel?: string; suffix?: string; id?: string }) {
+export function NumberInput({ value, onChange, onCommit, min = 0, max, step = 1, ariaLabel, suffix, id }: { value: string; onChange: (v: string) => void; onCommit?: () => void; min?: number; max?: number; step?: number; ariaLabel?: string; suffix?: string; id?: string }) {
   return (
     <div className="num-input">
-      <input id={id} inputMode="decimal" type="number" min={min} max={max} step={step} value={value} aria-label={ariaLabel} onChange={(e) => onChange(e.target.value)} />
+      <input
+        id={id}
+        inputMode="decimal"
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        aria-label={ariaLabel}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onCommit}
+        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+        // Scrolling the page over a focused number box would otherwise change the value.
+        onWheel={(e) => (e.target as HTMLInputElement).blur()}
+      />
       {suffix && <span className="num-suffix">{suffix}</span>}
     </div>
   );
