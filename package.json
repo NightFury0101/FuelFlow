@@ -1,6 +1,6 @@
 {
   "name": "fuelflow",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "FuelFlow \u2014 calorie counter and nutrition tracker with an AI nutrition coach. Eat Smarter. Track Better. Become Stronger.",
   "type": "module",

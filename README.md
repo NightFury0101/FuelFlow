@@ -1,5 +1,7 @@
 # FuelFlow
 
+> **Launching?** Follow [LAUNCH.md](./LAUNCH.md).
+
 **Eat Smarter. Track Better. Become Stronger.**
 
 FuelFlow is a mobile-first calorie counter, nutrition tracker and AI nutrition coach. It is built with React and TypeScript and hosted on GitHub Pages.
@@ -74,9 +76,11 @@ server/         optional Cloudflare Worker for the AI coach + setup guide
 tests/          unit tests and a mock coach server for local testing
 ```
 
-## Not built yet
+## Status
 
-These are planned for later stages:
+**Version 1.0 is feature-complete.** What's left before it's in the stores is account setup only you can do — see **[LAUNCH.md](./LAUNCH.md)** for the steps in order.
+
+Planned after launch:
 
 - A trainer dashboard where gyms see members' progress (with the member's permission)
 
