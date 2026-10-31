@@ -74,9 +74,9 @@ export function Privacy() {
         <p>Your AI key and your chat history stay on your phone. They aren’t stored in your account.</p>
       </Section>
 
-      <Section title="FuelFlow Premium (iPhone app)">
+      <Section title="FuelFlow Premium (iPhone and Android apps)">
         <ul>
-          <li>Subscriptions are bought and paid through Apple. We never see your card or payment details.</li>
+          <li>Subscriptions are bought and paid through Apple (App Store) or Google (Google Play). We never see your card or payment details.</li>
           <li>
             <strong>RevenueCat</strong> checks your purchase with Apple for us. It receives a random ID for your app install, what you bought and when — not your name, email or diary.
           </li>
@@ -164,14 +164,14 @@ export function Terms() {
       </Section>
 
       <Section title="Premium">
-        <p>FuelFlow Premium is an optional subscription sold in the iPhone app through Apple. It adds the built-in AI nutrition coach; everything else in FuelFlow stays free.</p>
+        <p>FuelFlow Premium is an optional subscription sold in the FuelFlow apps through the App Store or Google Play. It adds the built-in AI nutrition coach; everything else in FuelFlow stays free.</p>
         <ul>
-          <li>The price and billing period are shown before you confirm. Payment is charged to your Apple ID.</li>
-          <li>It renews automatically unless you cancel at least 24 hours before the end of the current period. Manage or cancel any time in your Apple ID settings.</li>
+          <li>The price and billing period are shown before you confirm. Payment is charged to your Apple ID or Google Play account.</li>
+          <li>It renews automatically unless you cancel at least 24 hours before the end of the current period. Manage or cancel any time in your Apple ID settings or Google Play subscriptions.</li>
           <li>If a free trial is offered, any unused part of it ends when you buy a subscription.</li>
-          <li>Refunds are handled by Apple under its rules — request one at reportaproblem.apple.com.</li>
+          <li>Refunds are handled by the store under its rules — Apple at reportaproblem.apple.com, Google Play in your Play Store order history.</li>
           <li>The Premium coach has a fair daily question limit. Its answers are general suggestions, not medical advice.</li>
-          <li>Apple’s standard licence agreement for apps (the Apple EULA) also applies to the iPhone app.</li>
+          <li>Apple’s standard licence agreement for apps (the Apple EULA) also applies to the iPhone app, and Google Play’s terms to the Android app.</li>
         </ul>
       </Section>
 
@@ -224,7 +224,7 @@ export function Support() {
       <Section title="Common questions">
         <Faq q="Is FuelFlow free?">
           <p>Yes. Tracking, recipes, meal plans, progress and reminders are free, with no ads. The AI coach is free with your own Gemini key (Gemini’s free tier costs nothing).</p>
-          <p>In the iPhone app you can also choose FuelFlow Premium, a subscription that builds the coach in so you don’t need a key. It’s optional and you can cancel any time in your Apple ID settings.</p>
+          <p>In the FuelFlow app (iPhone or Android) you can also choose FuelFlow Premium, a subscription that builds the coach in so you don’t need a key. It’s optional and you can cancel any time in your Apple ID settings or Google Play subscriptions.</p>
         </Faq>
         <Faq q="Where is my data stored?">
           <p>On your phone. If you create an account, a copy is also backed up to your private account so it syncs across your devices. Nobody else can read it.</p>
@@ -235,8 +235,11 @@ export function Support() {
         <Faq q="How are my calorie and protein targets worked out?">
           <p>From your age, height, weight, activity and goal using the Mifflin–St Jeor formula, with a safe pace of change. You can change them in Profile → Daily targets. They’re estimates, not medical advice.</p>
         </Faq>
+        <Faq q="How do I share my progress with my trainer?">
+          <p>Go to Progress → Share with your trainer → Create. Pick the last 7 or 30 days, then share the report image or send it as text (WhatsApp, Viber, email…). It’s made only from what you’ve logged, and nothing is sent until you choose where.</p>
+        </Faq>
         <Faq q="How do I restore or cancel Premium?">
-          <p>On a new phone, go to Profile → FuelFlow Premium → Restore purchases (use the same Apple ID). To cancel, open Settings → your name → Subscriptions on your iPhone, or tap Manage subscription in FuelFlow. Deleting the app doesn’t cancel it.</p>
+          <p>On a new phone, go to Profile → FuelFlow Premium → Restore purchases (use the same Apple ID or Google account). To cancel: on iPhone, Settings → your name → Subscriptions; on Android, Play Store → profile → Payments &amp; subscriptions → Subscriptions. Or tap Manage subscription in FuelFlow. Deleting the app doesn’t cancel it.</p>
         </Faq>
         <Faq q="How do I set up the AI coach?">
           <p>Go to Profile → AI nutrition coach, choose Gemini (free) or Claude, and paste your key. The key stays on your device. Your diary is only shared with the coach if you turn that on.</p>

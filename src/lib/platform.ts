@@ -3,6 +3,8 @@
 
 type CapacitorGlobal = { isNativePlatform?: () => boolean; getPlatform?: () => string };
 
+export type Platform = 'ios' | 'android' | 'web';
+
 function cap(): CapacitorGlobal | undefined {
   return typeof window === 'undefined' ? undefined : (window as Window & { Capacitor?: CapacitorGlobal }).Capacitor;
 }
@@ -14,4 +16,19 @@ export function isNativeApp(): boolean {
   } catch {
     return false;
   }
+}
+
+/** 'ios' or 'android' inside the store apps, 'web' in a browser. */
+export function getPlatform(): Platform {
+  if (!isNativeApp()) return 'web';
+  try {
+    return cap()?.getPlatform?.() === 'android' ? 'android' : 'ios';
+  } catch {
+    return 'ios';
+  }
+}
+
+/** The app store this copy of the app came from, for wording like "charged to your Apple ID". */
+export function storeName(): 'Apple' | 'Google Play' {
+  return getPlatform() === 'android' ? 'Google Play' : 'Apple';
 }

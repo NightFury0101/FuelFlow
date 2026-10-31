@@ -35,8 +35,9 @@
   --gap: 12px;
   --pad: 16px;
   --nav-h: 68px;
-  --safe-b: env(safe-area-inset-bottom, 0px);
-  --safe-t: env(safe-area-inset-top, 0px);
+  /* Android app: Capacitor provides --safe-area-inset-*; iPhone and browsers use env(). */
+  --safe-b: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --safe-t: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
   --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --display: 'Sora', 'Inter', system-ui, sans-serif;
   color-scheme: dark;
@@ -702,3 +703,11 @@ input[type='number']::-webkit-inner-spin-button { opacity: 0.4; }
 .fine-print { line-height: 1.5; font-size: 12px; }
 .premium-active .big-num { display: flex; align-items: center; gap: 8px; }
 a.btn { text-decoration: none; text-align: center; }
+
+/* Trainer report */
+.share-row { display: flex; align-items: center; gap: 14px; }
+.share-icon { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: 0 0 auto; }
+.share-text { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.share-text strong { font-size: 15.5px; }
+.report-preview { border-radius: 18px; overflow: hidden; border: 1px solid var(--border); background: #0b0d0c; aspect-ratio: 1080 / 1350; display: grid; place-items: center; }
+.report-preview img { width: 100%; height: 100%; display: block; }

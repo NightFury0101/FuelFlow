@@ -7,6 +7,7 @@ import { backupJson, diaryCsv, progressCsv, uid } from '../lib/storage';
 import { displayWater, displayWeight, weightToKg, weightValue, waterToMl, ML_PER_FLOZ } from '../lib/units';
 import { getApiKey, getProvider, isValidEndpoint, looksLikeKey, maskKey, PROVIDER_INFO, resolveAi, setApiKey, setProvider, testKey, type Provider } from '../lib/ai';
 import { isNativeApp } from '../lib/platform';
+import { shareFile } from '../lib/share';
 import { showPremium } from '../lib/billing';
 import { loadReminders, saveReminders, type ReminderItem, type ReminderSettings } from '../lib/reminders';
 import { checkPermission, remindersSupported, requestPermission, type Permission } from '../lib/notifications';
@@ -20,25 +21,8 @@ import { Link, useRoute } from '../router';
 import { AuthSheet } from '../components/AuthSheet';
 
 function download(name: string, text: string, type: string) {
-  const blob = new Blob([text], { type });
-  // Inside the iPhone/Android app there's no browser download bar, so hand the file to the
-  // system share sheet instead (Save to Files, AirDrop, email…).
-  if (isNativeApp()) {
-    const file = new File([blob], name, { type });
-    const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
-    if (nav.share && nav.canShare?.({ files: [file] })) {
-      nav.share({ files: [file], title: name }).catch(() => undefined);
-      return;
-    }
-  }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  // Browsers download the file; the store apps open the share sheet (Save to Files, email…).
+  void shareFile(new Blob([text], { type }), name, { title: name });
 }
 
 export function Profile() {

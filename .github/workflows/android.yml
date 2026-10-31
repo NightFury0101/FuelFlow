@@ -1,0 +1,72 @@
+name: Android app
+
+# Builds the Android app on every push to main. Each run has a test app you can install on an
+# Android phone ("FuelFlow-android-test" under the run's Artifacts — unzip, open the .apk).
+# If the signing secrets are set (see ANDROID.md), it also builds the signed bundle (.aab) to
+# upload to Google Play ("FuelFlow-android-release").
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    env:
+      HAS_SIGNING_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
+      - run: npm run android:prepare
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+      - name: Check the reminders, subscriptions and sharing plugins are inside the app
+        run: |
+          f=android/app/src/main/assets/capacitor.plugins.json
+          for p in LocalNotifications Purchases Share Filesystem; do grep -q "$p" "$f" && echo "$p plugin included"; done
+          grep -q LocalNotifications "$f" && grep -q Purchases "$f" && grep -q Share "$f" && grep -q Filesystem "$f"
+      - name: Build the test app (APK)
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FuelFlow-android-test
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+      - name: Build and sign the Play Store bundle (AAB)
+        if: env.HAS_SIGNING_KEY == 'true'
+        working-directory: android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          ./gradlew bundleRelease --no-daemon
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore "$RUNNER_TEMP/upload.jks" \
+            -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" "$AAB" "$KEY_ALIAS"
+          jarsigner -verify "$AAB" > /dev/null && echo "Bundle signed"
+          cp "$AAB" "$RUNNER_TEMP/FuelFlow-${{ github.run_number }}.aab"
+          rm -f "$RUNNER_TEMP/upload.jks"
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_SIGNING_KEY == 'true'
+        with:
+          name: FuelFlow-android-release
+          path: ${{ runner.temp }}/FuelFlow-${{ github.run_number }}.aab
+          retention-days: 30

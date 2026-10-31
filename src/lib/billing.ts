@@ -4,7 +4,7 @@
 // The plugin is called through Capacitor's native bridge, so the website ships no billing code.
 
 import { premiumConfig, type PremiumConfig } from '../premiumConfig';
-import { isNativeApp } from './platform';
+import { getPlatform, isNativeApp } from './platform';
 
 // ---------- Shapes returned by the plugin (only the fields we use) ----------
 
@@ -62,9 +62,16 @@ type Bridge = {
 };
 const bridge = () => (typeof window === 'undefined' ? undefined : (window as Window & { Capacitor?: Bridge }).Capacitor);
 
+/** RevenueCat's public key for this app's store (Apple or Google Play), or null. */
+export function storeKey(): string | null {
+  const cfg = getPremiumConfig();
+  const p = getPlatform();
+  return p === 'ios' ? cfg.revenueCatAppleKey : p === 'android' ? cfg.revenueCatGoogleKey ?? null : null;
+}
+
 /** Subscriptions can be offered: store app, plugin present and a RevenueCat key configured. */
 export function billingAvailable(): boolean {
-  if (!isNativeApp() || !getPremiumConfig().revenueCatAppleKey) return false;
+  if (!isNativeApp() || !storeKey()) return false;
   const b = bridge();
   if (!b?.nativePromise) return false;
   return !b.PluginHeaders || b.PluginHeaders.some((p) => p.name === 'Purchases');
@@ -89,7 +96,7 @@ let configured: Promise<void> | null = null;
 
 export function configureBilling(): Promise<void> {
   if (!configured) {
-    const key = getPremiumConfig().revenueCatAppleKey;
+    const key = storeKey();
     configured = key ? call<void>('configure', { apiKey: key }) : Promise.reject(new Error('Premium isn’t set up.'));
     configured.catch(() => (configured = null));
   }

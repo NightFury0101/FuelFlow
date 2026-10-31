@@ -3,12 +3,13 @@ import { PLAN_TABLE, PREMIUM_PITCH } from '../lib/plans';
 import { introText, periodLabel, planName, savingVsMonthly, type PurchasesPackage } from '../lib/billing';
 import { usePremium } from '../lib/premium';
 import { useStore } from '../lib/store';
-import { isNativeApp } from '../lib/platform';
+import { getPlatform, isNativeApp } from '../lib/platform';
 import { Card } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { Link, navigate } from '../router';
 
-const APPLE_SUBSCRIPTIONS = 'https://apps.apple.com/account/subscriptions';
+const MANAGE_URL = { ios: 'https://apps.apple.com/account/subscriptions', android: 'https://play.google.com/store/account/subscriptions', web: '' };
+const ACCOUNT = { ios: 'Apple ID', android: 'Google Play account', web: 'app store account' };
 
 function formatDate(iso: string | null): string | null {
   if (!iso) return null;
@@ -48,7 +49,7 @@ function PlanTable() {
 function FinePrint() {
   return (
     <p className="muted small fine-print">
-      Payment is charged to your Apple ID when you confirm. The subscription renews automatically at the same price unless you cancel at least 24 hours before the end of the current period. Manage or cancel any time in your Apple ID settings. See our{' '}
+      Payment is charged to your {ACCOUNT[getPlatform()]} when you confirm. The subscription renews automatically at the same price unless you cancel at least 24 hours before the end of the current period. Manage or cancel any time in your {getPlatform() === 'android' ? 'Google Play subscriptions' : 'Apple ID settings'}. See our{' '}
       <Link to="/terms" className="accent">
         terms of use
       </Link>{' '}
@@ -138,7 +139,7 @@ function Subscribe() {
         onClick={async () => {
           const r = await premium.restore();
           if (r === 'restored') store.showToast('Premium restored');
-          else if (r === 'none') store.showToast('No active Premium subscription found for this Apple ID.');
+          else if (r === 'none') store.showToast(`No active Premium subscription found for this ${ACCOUNT[getPlatform()]}.`);
         }}
       >
         Restore purchases
@@ -163,7 +164,7 @@ function Subscribed() {
       <button className="btn btn-primary block" onClick={() => navigate('/coach')}>
         <Icon name="sparkles" size={18} /> Ask your coach
       </button>
-      <a className="btn btn-secondary block" href={premium.managementURL || APPLE_SUBSCRIPTIONS} target="_blank" rel="noreferrer">
+      <a className="btn btn-secondary block" href={premium.managementURL || MANAGE_URL[getPlatform()]} target="_blank" rel="noreferrer">
         Manage subscription
       </a>
       <button
@@ -206,7 +207,7 @@ export function Premium() {
         <Card className="status-card">
           <p className="small muted">Your plan</p>
           <p className="big-num">Free</p>
-          <p className="muted small">Premium is available in the FuelFlow iPhone app, paid securely through your Apple ID. Nothing can be bought on this website.</p>
+          <p className="muted small">Premium is available in the FuelFlow app for iPhone and Android, paid securely through the App Store or Google Play. Nothing can be bought on this website.</p>
         </Card>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { WeightEntry } from '../lib/types';
 import { useStore } from '../lib/store';
 import { addDays, formatShort, todayKey } from '../lib/date';
@@ -9,6 +9,7 @@ import { BarChart, LineChart } from '../components/charts';
 import { Card, EmptyState, Segmented } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { WeightSheet } from '../components/WeightSheet';
+import { ReportSheet } from '../components/ReportSheet';
 
 type Range = '30' | '90' | '365' | 'all';
 type Period = '7' | '30' | '90' | '365';
@@ -23,6 +24,8 @@ export function Progress() {
   const [period, setPeriod] = useState<Period>('7');
   const [weightSheet, setWeightSheet] = useState<{ edit: WeightEntry | null } | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const closeReport = useCallback(() => setReportOpen(false), []);
 
   // Older data may hold several weigh-ins on one day; charts and trends use the last one per day.
   const weights = useMemo(() => {
@@ -172,6 +175,22 @@ export function Progress() {
           </>
         )}
       </Card>
+
+      <Card className="share-card">
+        <div className="share-row">
+          <span className="share-icon" aria-hidden="true">
+            <Icon name="upload" size={20} />
+          </span>
+          <div className="share-text">
+            <strong>Share with your trainer</strong>
+            <span className="muted small">A one-page report of your weight, calories, protein and consistency.</span>
+          </div>
+          <button className="btn btn-secondary sm" onClick={() => setReportOpen(true)}>
+            Create
+          </button>
+        </div>
+      </Card>
+      <ReportSheet open={reportOpen} onClose={closeReport} />
 
       {measures.length > 0 && (
         <Card title="Body measurements" icon="target">
