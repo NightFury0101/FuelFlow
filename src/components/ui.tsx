@@ -42,7 +42,16 @@ export function Sheet({ open, onClose, title, children, footer, wide }: { open: 
 
 export function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string | null; children: ReactNode }) {
   return (
-    <label className="field">
+    <label
+      className="field"
+      onClick={(e) => {
+        // A <label> "clicks" its first control when you tap its text or the space around the
+        // controls. For a group of buttons (Female / Male / …) that silently picked the first
+        // option, so only let the label act on text boxes and dropdowns.
+        const first = e.currentTarget.querySelector('input, select, textarea, button');
+        if (first instanceof HTMLButtonElement && !(e.target as Element).closest('button')) e.preventDefault();
+      }}
+    >
       <span className="field-label">{label}</span>
       {children}
       {error ? <span className="field-error">{error}</span> : hint ? <span className="field-hint">{hint}</span> : null}

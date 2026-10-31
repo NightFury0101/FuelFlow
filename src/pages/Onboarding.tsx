@@ -17,7 +17,8 @@ export function Onboarding() {
   const [step, setStep] = useState<Step>(0);
   const [name, setName] = useState('');
   const [units, setUnits] = useState<UnitPrefs>({ weight: 'kg', height: 'cm', water: 'ml' });
-  const [sex, setSex] = useState<Sex>('female');
+  // No sex is pre-selected: a default would quietly give people the wrong targets.
+  const [sex, setSex] = useState<Sex | null>(null);
   const [birth, setBirth] = useState('');
   const [heightCm, setHeightCm] = useState('');
   const [ft, setFt] = useState('');
@@ -40,6 +41,7 @@ export function Onboarding() {
   const age = isValidDateKey(birth) ? ageFromBirthDate(birth) : NaN;
 
   const bodyErrors = {
+    sex: sex == null ? 'Choose one — or “Prefer not to say”' : null,
     birth: !isValidDateKey(birth) ? 'Enter your date of birth' : age < 13 ? 'FuelFlow is for people aged 13 and over' : age > 110 ? 'Check the year' : null,
     height: !(hCm >= 100 && hCm <= 250) ? 'Enter your height' : null,
     weight: !(wKg >= 30 && wKg <= 350) ? 'Enter your current weight' : null,
@@ -56,14 +58,14 @@ export function Onboarding() {
   };
 
   const result = useMemo(() => {
-    if (bodyErrors.birth || bodyErrors.height || bodyErrors.weight) return null;
-    return calculateTargets({ sex, age, heightCm: hCm, weightKg: wKg, goalWeightKg: gKg, activity, goal, special });
+    if (bodyErrors.sex || bodyErrors.birth || bodyErrors.height || bodyErrors.weight) return null;
+    return calculateTargets({ sex: sex!, age, heightCm: hCm, weightKg: wKg, goalWeightKg: gKg, activity, goal, special });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sex, age, hCm, wKg, gKg, activity, goal, special]);
 
   const next = () => {
     setTried(true);
-    if (step === 1 && (bodyErrors.birth || bodyErrors.height || bodyErrors.weight)) return;
+    if (step === 1 && (bodyErrors.sex || bodyErrors.birth || bodyErrors.height || bodyErrors.weight)) return;
     if (step === 2 && goalErrors.goalWeight) return;
     if (step === 3 && result) setTargets(result.targets);
     setTried(false);
@@ -74,7 +76,7 @@ export function Onboarding() {
     const t = skipBody ? DEFAULT_TARGETS : (targets ?? result?.targets ?? DEFAULT_TARGETS);
     const profile: Profile = {
       name: name.trim() || 'there',
-      sex,
+      sex: sex ?? 'unspecified',
       birthDate: skipBody ? undefined : birth,
       heightCm: skipBody ? undefined : Math.round(hCm),
       startWeightKg: skipBody ? undefined : Math.round(wKg * 10) / 10,
@@ -139,10 +141,10 @@ export function Onboarding() {
           <section className="ob-step">
             <h1 className="ob-h">About you</h1>
             <p className="muted">Used only to estimate your energy needs. Stored on this device.</p>
-            <Field label="Sex used for the calculation" hint="Energy formulas differ slightly by biological sex.">
+            <Field label="Sex used for the calculation" hint="Energy formulas differ slightly by biological sex." error={tried ? bodyErrors.sex : null}>
               <Segmented<Sex>
                 label="Sex"
-                value={sex}
+                value={sex as Sex}
                 onChange={setSex}
                 options={[
                   { value: 'female', label: 'Female' },
