@@ -108,3 +108,27 @@ and set a monthly spending cap there.
   Manage subscription.
 - The coach sends RevenueCat's random user ID in `X-FuelFlow-User`; the server asks RevenueCat
   whether that ID has an active `premium` entitlement before answering.
+
+## Android (Google Play)
+
+Same idea, with Google Play instead of Apple. You need the Play Console account from
+[ANDROID.md](./ANDROID.md) and at least one upload of the app (closed testing is fine).
+
+1. **Play Console → your app → Monetize → Products → Subscriptions → Create subscription**:
+   product ID `fuelflow_premium` (Play IDs can't contain dots in some places — underscores are safe),
+   name "FuelFlow Premium". Add two **base plans**: `monthly` (auto-renewing, 1 month, US$2.99) and
+   `yearly` (auto-renewing, 1 year, US$19.99). Optional: a free-trial **offer** on `yearly`.
+   Activate both.
+2. **Play Console → Setup → Payments profile:** set up your merchant account and bank details so
+   Google can pay you. Google keeps 15% of subscriptions.
+3. **RevenueCat → your project → Add app → Google Play**: package `io.github.nightfury0101.fuelflow`,
+   and follow RevenueCat's guide to create a **service account** in Google Cloud and invite it in
+   Play Console (it lets RevenueCat check purchases). Import the products, attach both
+   `fuelflow_premium:monthly` and `fuelflow_premium:yearly` to the **premium** entitlement, and add
+   them to the `default` offering as the Monthly and Annual packages.
+4. Copy the **public Google SDK key** (starts `goog_`) into `src/premiumConfig.ts` →
+   `revenueCatGoogleKey`, push, and the next **Android app** build includes Premium.
+5. **Test:** Play Console → Settings → **License testing** → add your Google account. Purchases
+   from that account are free test purchases, and renewals happen every few minutes.
+
+The same coach server and RevenueCat secret key serve both apps — nothing changes there.

@@ -32,7 +32,8 @@ FuelFlow is a mobile-first calorie counter, nutrition tracker and AI nutrition c
 - **Works offline** – A service worker (`src/sw-template.js`, filled in by `build.mjs`) saves the app on the first visit, so it opens and works without a connection. Account data, food searches and AI requests always go to the network.
 - **Privacy policy and terms** – In-app pages (`#/privacy`, `#/terms`) linked from onboarding, sign-up and Profile. They describe exactly how the app handles data, and should be reviewed before a public launch.
 - **Premium** – An optional subscription sold in the iPhone app through Apple in-app purchase (RevenueCat). It adds the AI coach built in, with no key. The purchase screen shows price, period, trial and auto-renew terms, with Restore purchases and Manage subscription. The coach server checks the subscription with RevenueCat before answering. Switched on once `src/premiumConfig.ts` is filled in — see [PREMIUM.md](./PREMIUM.md). The website only explains Premium.
-- **iPhone app** – Capacitor wraps the same code; daily meal, water and weigh-in reminders; App Store checklist, listing text and screenshots in [IOS.md](./IOS.md) and `store/`.
+- **iPhone and Android apps** – Capacitor wraps the same code; daily meal, water and weigh-in reminders; native share sheet. App Store guide in [IOS.md](./IOS.md), Google Play guide in [ANDROID.md](./ANDROID.md), store screenshots and graphics in `store/`. GitHub builds both apps on every push; the Android run includes an installable test app.
+- **Share with your trainer** – Progress → *Share with your trainer* makes a one-page report (weight trend, calories, protein, consistency, water, measurements) for the last 7 or 30 days, as an image or text. Nothing is sent until the member chooses where.
 
 ## Where your data lives
 
@@ -77,7 +78,6 @@ tests/          unit tests and a mock coach server for local testing
 
 These are planned for later stages:
 
-- Android app (Google Play billing for Premium)
-- Sharing progress with a trainer
+- A trainer dashboard where gyms see members' progress (with the member's permission)
 
 FuelFlow gives estimates for general wellbeing. It is not medical advice.

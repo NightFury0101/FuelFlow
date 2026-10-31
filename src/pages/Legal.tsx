@@ -249,6 +249,7 @@ export function Support() {
         </Faq>
         <Faq q="How do I delete my account?">
           <p>Go to Profile → Account &amp; sync → Delete my account, and confirm with your password. This permanently deletes the account and everything in it. To erase data without an account, use Profile → Your data → Delete all my data.</p>
+          <p>No longer have the app? Open FuelFlow in any browser at nightfury0101.github.io/FuelFlow, sign in with the same email, and delete the account from Profile in the same way.</p>
         </Faq>
         <Faq q="Is FuelFlow medical advice?">
           <p>No. FuelFlow gives estimates for general wellbeing. If you’re under 18, pregnant or breastfeeding, or have a medical condition, please speak to a doctor or registered dietitian before changing what you eat.</p>
