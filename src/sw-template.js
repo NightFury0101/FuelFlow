@@ -12,7 +12,10 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(APP_CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
+      // cache: 'reload' skips the browser's HTTP cache. GitHub Pages lets browsers reuse files
+      // for 10 minutes, so without it a fresh deploy could be saved with a stale main.js that
+      // still points at the previous version's code.
+      .then((cache) => cache.addAll(PRECACHE.map((u) => new Request(u, { cache: 'reload' }))))
       .then(() => self.skipWaiting()),
   );
 });
