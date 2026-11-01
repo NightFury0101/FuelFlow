@@ -75,5 +75,5 @@ test('CORS allows the app origin and the user header', async () => {
   assert.equal(r.headers.get('Access-Control-Allow-Origin'), ORIGIN);
   assert.match(r.headers.get('Access-Control-Allow-Headers') || '', /X-FuelFlow-User/);
   const h = await (await worker.fetch(new Request('https://coach.example/health', { headers: { Origin: ORIGIN } }), PREMIUM_ENV)).json();
-  assert.deepEqual(h, { ok: true, configured: true, premium: true });
+  assert.deepEqual(h, { ok: true, configured: true, premium: true, provider: 'gemini' });
 });

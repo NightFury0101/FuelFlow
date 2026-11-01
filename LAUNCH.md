@@ -13,8 +13,9 @@ can't be done from the code. Work through it top to bottom and tick as you go.
 | iPhone app build | ✅ Builds on every push (Actions → iOS app check) |
 | Android app build | ✅ Builds on every push, with an installable test app |
 | Privacy, terms, support pages | ✅ Live — support email still missing (step 1) |
+| Apple rules (subscriptions, account deletion, AI data permission 5.1.2(i)) | ✅ Done in the app |
 | Store screenshots & graphics | ✅ In `store/` |
-| Premium (built-in AI coach, paid) | ⏸ Off until keys are added — optional for launch (step 5) |
+| Premium (built-in AI coach, paid) | ✅ Code finished and Apple-checked — switches on when keys are added (step 5) |
 
 ---
 
@@ -57,19 +58,27 @@ public, so starting this early saves the most time. Gym members make good tester
       from `store/screenshots/6.9-inch` and `6.5-inch`, support and privacy URLs from IOS.md.
 - [ ] Test it through **TestFlight**, then **Submit for review**.
 
-## 5. Premium — launch with it, or add it in an update
+## 5. Premium — switch it on before you submit the iPhone app
 
-**Simplest path:** launch 1.0 free. Premium stays hidden (nothing broken shows), and the AI
-coach still works for anyone who pastes a free Gemini key. Add Premium as version 1.1 once the
-apps are approved — reviews go faster with fewer moving parts.
+All of Premium's code is finished and checked against Apple's subscription and AI-data rules
+(checklist in [PREMIUM.md](./PREMIUM.md#apple-review-checklist-for-premium)). It needs your
+accounts to come alive, in this order — each step's details are in PREMIUM.md:
 
-When you're ready, [PREMIUM.md](./PREMIUM.md) covers it in order:
-
-- [ ] Paid-apps agreement + bank details (Apple), payments profile (Google).
-- [ ] Create the subscriptions in both stores.
-- [ ] RevenueCat project, `premium` entitlement, copy the `appl_` and `goog_` public keys.
-- [ ] Deploy the coach server on Cloudflare with your AI key and RevenueCat secret key.
-- [ ] Fill in `src/premiumConfig.ts` (both keys + coach URL), push, test with sandbox/test accounts.
+- [ ] **Apple:** Paid Apps agreement + bank and tax details; apply for the Small Business Program (15% fee).
+- [ ] **Apple:** create the `FuelFlow Premium` group with `fuelflow.premium.monthly` and
+      `fuelflow.premium.yearly` (display name, description, review screenshot each).
+- [ ] **Apple:** generate the In-App Purchase key (`.p8`) for RevenueCat.
+- [ ] **RevenueCat:** project, iOS app, import the 2 products, entitlement `premium`, offering
+      `default`; copy the public `appl_` key and the secret `sk_` key.
+- [ ] **AI key for the server:** a Claude key (console.anthropic.com) with a small monthly spend limit.
+- [ ] **Cloudflare:** deploy `server/coach-worker.js` with `ANTHROPIC_API_KEY`,
+      `REVENUECAT_SECRET_KEY` and `ALLOWED_ORIGIN`; open `<worker>/health` → `"configured":true,"premium":true,"provider":"claude"`.
+- [ ] **Send Claude the `appl_` key and the worker URL** (never the `sk_` key) — it fills in
+      `src/premiumConfig.ts` and pushes. Or edit it yourself.
+- [ ] **Test with a Sandbox account** (PREMIUM.md step 5): buy, coach answers with no key,
+      Restore after reinstall, cancel.
+- [ ] Submit the subscriptions **together with** the app version.
+- [ ] Later, for Android: payments profile, Play subscriptions, `goog_` key (PREMIUM.md → Android).
 
 ## 6. Before you press Publish
 

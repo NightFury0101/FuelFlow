@@ -15,7 +15,7 @@
 //   MODEL / GEMINI_MODEL   optional model overrides
 //
 // Endpoints:
-//   GET  /health → { ok: true, configured: boolean, premium: boolean }
+//   GET  /health → { ok: true, configured: boolean, premium: boolean, provider: "claude" | "gemini" | null }
 //   POST /chat   → body { messages: [{role, content}], context: string } → { reply }
 //                  Premium mode needs header X-FuelFlow-User: <RevenueCat app user id>.
 //                  402 = no active subscription, 429 { limit: true } = daily limit reached.
@@ -150,7 +150,7 @@ export default {
     const premiumMode = Boolean(env.REVENUECAT_SECRET_KEY);
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
-    if (request.method === 'GET' && url.pathname === '/health') return json({ ok: true, configured: Boolean(provider(env)), premium: premiumMode }, 200, headers);
+    if (request.method === 'GET' && url.pathname === '/health') return json({ ok: true, configured: Boolean(provider(env)), premium: premiumMode, provider: provider(env) }, 200, headers);
     if (request.method !== 'POST' || url.pathname !== '/chat') return json({ error: 'Not found' }, 404, headers);
     if (!origins(env).includes(origin)) return json({ error: 'Origin not allowed' }, 403, headers);
     if (!provider(env)) return json({ error: 'Coach not configured' }, 503, headers);

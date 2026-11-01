@@ -27,6 +27,7 @@ project (`FuelFlow-ios-project`).
 | Explain camera / microphone use | Not needed — FuelFlow uses neither |
 | Be clear about paid features | Done — price, period, trial and auto-renew terms shown before buying; Restore purchases button; Terms and Privacy links on the purchase screen |
 | Support, privacy and terms web pages | Done — see URLs below. Add a support email in `src/pages/Legal.tsx` (`SUPPORT_EMAIL`). |
+| Permission before sending data to an AI company (5.1.2(i)) | Done — Coach shows a permission screen naming Google or Anthropic and what's sent; withdraw in Profile → AI nutrition coach |
 | Health disclaimer | Done — targets are labelled as estimates, with advice to see a doctor for under-18s, pregnancy and medical conditions |
 
 ## URLs for App Store Connect
@@ -63,7 +64,9 @@ Codemagic or Ionic Appflow that signs and uploads for you.
 
 - **Category:** Health & Fitness. **Price:** Free. **In-app purchases:** FuelFlow Premium
   (auto-renewable subscription, monthly and yearly) — set up as in PREMIUM.md.
-- **Age rating:** answer "None" to every question → 4+.
+- **Age rating:** Apple's questionnaire (updated 2026) asks about medical/wellness topics —
+  answer **Yes** to health or wellness topics (nutrition, weight) and **No** to everything else
+  that doesn't apply; accept the rating Apple assigns.
 - **App Privacy** ("nutrition label"):
   - *Without an account* nothing leaves the phone except what's listed next.
   - *Contact info → Email address* — linked to the user, used for App Functionality (accounts).
@@ -86,6 +89,9 @@ Codemagic or Ionic Appflow that signs and uploads for you.
   > (Profile → Reminders) use iPhone notifications. FuelFlow Premium (Profile → FuelFlow
   > Premium) is an auto-renewable subscription that adds a built-in coach with no key needed;
   > use a Sandbox tester account to try it. Restore purchases is on the same screen.
+  > AI data sharing (5.1.2(i)): before the first coach question, the Coach tab shows a
+  > permission screen naming the AI company (Google or Anthropic) and what is sent; nothing is
+  > sent until Allow is tapped. It can be withdrawn in Profile → AI nutrition coach.
 
 ## Avoiding "minimum functionality" rejections (guideline 4.2)
 

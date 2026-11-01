@@ -3,10 +3,14 @@ import { useStore } from '../lib/store';
 import { useAi } from '../lib/useAi';
 import { usePremium } from '../lib/premium';
 import { safeLocalStorage, uid } from '../lib/storage';
+import type { AiConfig } from '../lib/ai';
+import type { CoachProvider } from '../lib/aiConsent';
 import { askCoach, buildContext, CoachError, loadMessages, saveMessages, STARTERS, MAX_CHARS, type CoachMessage } from '../lib/coach';
 import { Card } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { Link } from '../router';
+import { consentId, disclosure, hasConsent } from '../lib/aiConsent';
+import { getPremiumConfig } from '../lib/billing';
 
 /** Minimal, safe formatter for coach replies: paragraphs, bullet/numbered lists, **bold**, ### headings. No HTML. */
 function inline(text: string): ReactNode[] {
@@ -64,6 +68,10 @@ export function Coach() {
   const ctrl = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const share = profile.coachShareLog;
+  const premiumProvider = getPremiumConfig().coachProvider;
+  const cid = ai ? consentId(ai, premiumProvider) : null;
+  const allowed = !!cid && hasConsent(profile, cid);
+  const [shareChoice, setShareChoice] = useState(false);
 
   useEffect(() => saveMessages(ls, messages), [messages, ls]);
   useEffect(() => {
@@ -73,7 +81,8 @@ export function Coach() {
 
   const send = async (text: string) => {
     const q = text.trim().slice(0, MAX_CHARS);
-    if (!q || busy || !ai) return;
+    // Nothing is sent to an AI company without permission for that company (App Store 5.1.2(i)).
+    if (!q || busy || !ai || !allowed) return;
     const userMsg: CoachMessage = { id: uid('c-'), role: 'user', text: q, at: Date.now() };
     const history = [...messages.filter((m) => !m.error), userMsg];
     setMessages((m) => [...m.filter((x) => !x.error), userMsg]);
@@ -152,32 +161,23 @@ export function Coach() {
         </Card>
       ) : (
         <>
-          {share === undefined ? (
-            <Card className="consent">
-              <p className="consent-title">
-                <Icon name="lock" size={16} /> Let the coach see your food log?
-              </p>
-              <p className="muted small">
-                With this on, each question also sends a short summary — today’s totals, the foods you logged, your weekly averages and latest weight — so answers fit your day. It’s sent only to the AI to answer you. You can change this any time.
-              </p>
-              <div className="sheet-actions">
-                <button className="btn btn-ghost grow" onClick={() => store.updateProfile({ coachShareLog: false })}>
-                  Keep it private
-                </button>
-                <button className="btn btn-primary grow" onClick={() => store.updateProfile({ coachShareLog: true })}>
-                  Allow
-                </button>
-              </div>
-            </Card>
+          {!allowed ? (
+            <ConsentCard
+              ai={ai}
+              provider={premiumProvider}
+              share={shareChoice}
+              setShare={setShareChoice}
+              onAllow={() => store.updateProfile({ aiConsent: cid!, coachShareLog: shareChoice })}
+            />
           ) : (
-            <button className={'share-toggle' + (share ? ' on' : '')} role="switch" aria-checked={share} onClick={() => store.updateProfile({ coachShareLog: !share })}>
-              <Icon name={share ? 'diary' : 'lock'} size={16} />
-              <span>{share ? 'Coach can see your food log' : 'Coach can’t see your food log'}</span>
-              <span className="switch" aria-hidden="true">
-                <span />
-              </span>
-            </button>
-          )}
+            <>
+          <button className={'share-toggle' + (share ? ' on' : '')} role="switch" aria-checked={!!share} onClick={() => store.updateProfile({ coachShareLog: !share })}>
+            <Icon name={share ? 'diary' : 'lock'} size={16} />
+            <span>{share ? 'Coach can see your food log' : 'Coach can’t see your food log'}</span>
+            <span className="switch" aria-hidden="true">
+              <span />
+            </span>
+          </button>
 
           {messages.length === 0 ? (
             <div className="coach-empty">
@@ -253,9 +253,59 @@ export function Coach() {
               <Icon name="up" size={20} />
             </button>
           </form>
-          <p className="muted small center coach-note">Suggestions only — not medical advice. For health conditions, talk to a doctor or registered dietitian.</p>
+          <p className="muted small center coach-note">
+            Answers come from {disclosure(ai, premiumProvider).recipient}. Suggestions only — not medical advice. For health conditions, talk to a doctor or registered dietitian.
+          </p>
+            </>
+          )}
         </>
       )}
     </div>
+  );
+}
+
+/** Shown before the first question to a given AI company, and again if permission is withdrawn
+ *  or the coach is switched to another company. Nothing is sent until Allow is tapped. */
+function ConsentCard({ ai, provider, share, setShare, onAllow }: { ai: AiConfig; provider: CoachProvider; share: boolean; setShare: (v: boolean) => void; onAllow: () => void }) {
+  const d = disclosure(ai, provider);
+  return (
+    <Card className="consent">
+      <p className="consent-title">
+        <Icon name="lock" size={16} /> Before you ask the coach
+      </p>
+      <p className="small">
+        To answer you, FuelFlow sends data to <strong>{d.recipient}</strong>, a third-party AI service. It’s used only to write the coach’s reply.
+      </p>
+      <p className="small">What’s sent with each question:</p>
+      <ul className="small consent-list">
+        <li>What you type, and your recent messages in this chat</li>
+        <li>Your goal, daily targets, units and dietary preferences</li>
+        <li>Whether you noted pregnancy, breastfeeding or a medical condition (not which one)</li>
+        <li>Only if you turn it on below: a summary of your food log — today’s foods, totals, planned meals and water, last week’s averages, and your latest weight and 30-day change</li>
+      </ul>
+      <p className="muted small">Not sent: your name, email, date of birth or account details.{d.note ? ' ' + d.note : ''}</p>
+      <button type="button" className={'share-toggle' + (share ? ' on' : '')} role="switch" aria-checked={share} onClick={() => setShare(!share)}>
+        <Icon name={share ? 'diary' : 'lock'} size={16} />
+        <span>Also share my food log summary</span>
+        <span className="switch" aria-hidden="true">
+          <span />
+        </span>
+      </button>
+      <div className="sheet-actions">
+        <Link to="/" className="btn btn-ghost grow">
+          Not now
+        </Link>
+        <button type="button" className="btn btn-primary grow" onClick={onAllow}>
+          Allow
+        </button>
+      </div>
+      <p className="muted small">
+        You can withdraw this any time in Profile → AI nutrition coach. See our{' '}
+        <Link to="/privacy" className="accent">
+          privacy policy
+        </Link>
+        .
+      </p>
+    </Card>
   );
 }

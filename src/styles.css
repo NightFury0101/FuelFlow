@@ -711,3 +711,8 @@ a.btn { text-decoration: none; text-align: center; }
 .share-text strong { font-size: 15.5px; }
 .report-preview { border-radius: 18px; overflow: hidden; border: 1px solid var(--border); background: #0b0d0c; aspect-ratio: 1080 / 1350; display: grid; place-items: center; }
 .report-preview img { width: 100%; height: 100%; display: block; }
+
+/* AI consent (App Store 5.1.2(i)) */
+.consent-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.consent .share-toggle { margin: 4px 0; }
+.consent-status { display: flex; flex-direction: column; gap: 6px; }

@@ -4,7 +4,7 @@ import { Link } from '../router';
 
 // Keep these accurate when the app changes. Last reviewed for: on-device storage, optional
 // Firebase accounts, optional AI coach with the user's own Gemini/Claude key, Open Food Facts search.
-export const LEGAL_UPDATED = '31 October 2026';
+export const LEGAL_UPDATED = '1 November 2026';
 const CONTACT_URL = 'https://github.com/NightFury0101/FuelFlow/issues';
 /** Support email shown on the Help & support page. App Store reviewers expect a way to reach you;
  *  set this to an address you check (e.g. 'support@yourdomain.com'). null = GitHub page only. */
@@ -65,10 +65,12 @@ export function Privacy() {
       </Section>
 
       <Section title="The AI nutrition coach (optional)">
-        <p>The coach is off until you connect it with your own key. When you ask a question:</p>
+        <p>The coach is off until you connect it. Before anything is sent, the coach screen names the AI company that will receive your data and asks your permission. Nothing is sent until you tap Allow, and switching to a different AI company asks again. You can withdraw permission any time in Profile → AI nutrition coach, and the coach then sends nothing more.</p>
+        <p>Once you’ve allowed it, each question sends:</p>
         <ul>
-          <li>Your question and recent chat messages are sent straight from your phone to the AI company you chose: Google (Gemini) or Anthropic (Claude).</li>
-          <li>A short summary of your food log is sent only if you switch on “Let the coach see my food log”.</li>
+          <li>Your question and recent chat messages, straight from your phone to the AI company you chose: Google (Gemini) or Anthropic (Claude).</li>
+          <li>Your goal, daily targets, units and dietary preferences, and whether you noted pregnancy, breastfeeding or a medical condition (not which one) — so answers fit you. Never your name, email or date of birth.</li>
+          <li>A short summary of your food log only if you switch on “Also share my food log summary”. It’s off unless you turn it on.</li>
           <li>That company’s own terms and privacy policy apply. Google may use conversations on Gemini’s free tier to improve its products.</li>
         </ul>
         <p>Your AI key and your chat history stay on your phone. They aren’t stored in your account.</p>
@@ -80,7 +82,7 @@ export function Privacy() {
           <li>
             <strong>RevenueCat</strong> checks your purchase with Apple for us. It receives a random ID for your app install, what you bought and when — not your name, email or diary.
           </li>
-          <li>When you ask the built-in Premium coach a question, your question, recent chat messages and (only if you switch it on) the food-log summary go to our coach server, which passes them to the AI company (Anthropic or Google) and sends back the answer. Our server doesn’t keep your messages; it only counts questions per day to keep the service fair.</li>
+          <li>When you ask the built-in Premium coach a question, your question, recent chat messages and (only if you switch it on) the food-log summary go to our coach server, which passes them to the AI company named on the coach screen (Anthropic or Google) and sends back the answer. Our server doesn’t keep your messages; it only counts questions per day to keep the service fair.</li>
         </ul>
       </Section>
 

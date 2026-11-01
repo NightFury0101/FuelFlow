@@ -5,8 +5,10 @@ import { ACTIVITY, balanceCarbs, calculateTargets } from '../lib/targets';
 import { ageFromBirthDate, isValidDateKey, todayKey } from '../lib/date';
 import { backupJson, diaryCsv, progressCsv, uid } from '../lib/storage';
 import { displayWater, displayWeight, weightToKg, weightValue, waterToMl, ML_PER_FLOZ } from '../lib/units';
+import { consentId, disclosure, hasConsent } from '../lib/aiConsent';
+import { getPremiumConfig } from '../lib/billing';
 import { getApiKey, getProvider, isValidEndpoint, looksLikeKey, maskKey, PROVIDER_INFO, resolveAi, setApiKey, setProvider, testKey, type Provider } from '../lib/ai';
-import { isNativeApp } from '../lib/platform';
+import { getPlatform, isNativeApp } from '../lib/platform';
 import { shareFile } from '../lib/share';
 import { showPremium } from '../lib/billing';
 import { loadReminders, saveReminders, type ReminderItem, type ReminderSettings } from '../lib/reminders';
@@ -238,6 +240,9 @@ function AccountSection() {
             }}
           >
             <p className="small">This permanently deletes your account and everything in it, on every device. It can’t be undone. Download a backup first if you want to keep a copy.</p>
+            {isNativeApp() && (
+              <p className="small muted">If you subscribe to FuelFlow Premium, deleting your account doesn’t cancel it — {getPlatform() === 'android' ? 'Google Play' : 'Apple'} keeps billing until you cancel in your {getPlatform() === 'android' ? 'Google Play subscriptions' : 'Apple ID settings (Settings → your name → Subscriptions)'}.</p>
+            )}
             <Field label="Enter your password to confirm">
               <input type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} aria-label="Password to confirm deletion" />
             </Field>
@@ -790,6 +795,26 @@ function CoachSection() {
           <p className="muted small">
             Coach is using: <strong className="fg">{using.kind === 'premium' ? 'FuelFlow Premium (built in)' : using.kind === 'server' ? 'your own server' : PROVIDER_INFO[using.provider].name}</strong>
           </p>
+        )}
+        {using && (
+          <div className="consent-status">
+            <p className="small">
+              Sharing with <strong className="fg">{disclosure(using, getPremiumConfig().coachProvider).recipient}</strong>:{' '}
+              {hasConsent(p, consentId(using, getPremiumConfig().coachProvider)) ? 'allowed' : 'not allowed — the coach will ask first'}
+            </p>
+            {hasConsent(p, consentId(using, getPremiumConfig().coachProvider)) && (
+              <button
+                type="button"
+                className="btn btn-ghost block"
+                onClick={() => {
+                  store.updateProfile({ aiConsent: undefined, coachShareLog: false });
+                  store.showToast('Permission withdrawn — nothing more will be sent to the coach');
+                }}
+              >
+                Withdraw permission
+              </button>
+            )}
+          </div>
         )}
         {using?.kind === 'premium' && <p className="notice ok small">Your Premium coach is ready — no key needed. Anything you set up below is only used if Premium ends.</p>}
         <Segmented<Mode>

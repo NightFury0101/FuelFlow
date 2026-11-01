@@ -15,6 +15,9 @@ export interface PremiumConfig {
   revenueCatGoogleKey: string | null;
   entitlement: string; // the entitlement identifier you create in RevenueCat
   coachUrl: string | null; // e.g. 'https://fuelflow-coach.yourname.workers.dev'
+  // Which AI company your coach server uses (its PROVIDER setting). Apple requires the app to
+  // name it before sending anything, so keep this the same as the server.
+  coachProvider: 'claude' | 'gemini';
 }
 
 export const premiumConfig: PremiumConfig = {
@@ -22,4 +25,5 @@ export const premiumConfig: PremiumConfig = {
   revenueCatGoogleKey: null,
   entitlement: 'premium',
   coachUrl: null,
+  coachProvider: 'claude',
 };

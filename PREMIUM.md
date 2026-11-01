@@ -73,14 +73,44 @@ Edit `src/premiumConfig.ts` (or send me the two values and I'll do it):
 ```ts
 export const premiumConfig = {
   revenueCatAppleKey: 'appl_XXXXXXXXXXXXXXXXXXXX',
+  revenueCatGoogleKey: null, // 'goog_…' once Google Play is set up
   entitlement: 'premium',
   coachUrl: 'https://fuelflow-coach.yourname.workers.dev',
+  coachProvider: 'claude', // must match the server: open <coachUrl>/health and copy "provider"
 };
 ```
+
+Premium stays hidden until **both** a store key and `coachUrl` are filled in, so the app never
+sells a coach that isn't running. `coachProvider` is the AI company named on the coach's
+permission screen (Apple guideline 5.1.2(i)) — if it doesn't match the server, reviewers can
+reject the app, so check `/health` after any change to the server's `PROVIDER`.
+
+For a public service use **Claude** or a **paid** Gemini key: on Gemini's free tier Google may
+use conversations to improve its products, which you'd then have to tell every subscriber.
 
 Push to GitHub. Then on the Mac: `npm install && npm run build && npx cap sync ios`, and in
 Xcode → **App → Signing & Capabilities → + Capability → In-App Purchase**. Archive and upload as
 in IOS.md. Submit the subscriptions **together with the app version** for review.
+
+## Apple review checklist for Premium
+
+Apple checks these on every subscription app (guidelines 3.1.1, 3.1.2 and 5.1.2). FuelFlow's
+code already does each one; the ✋ items are yours in App Store Connect.
+
+- [x] Bought only through Apple in-app purchase; no links or prices pointing to other ways to pay.
+- [x] Before buying: plan name, price, billing period, trial length, auto-renew wording,
+      **Restore purchases**, and working **Terms of use** and **Privacy policy** links.
+- [x] Manage / cancel link for subscribers; account deletion says the subscription must be
+      cancelled separately.
+- [x] Premium screen hidden until purchases and the coach server both work (no dead paywall).
+- [x] Before the first coach question, a permission screen names the AI company, lists what is
+      sent, keeps the food log off by default, and can be withdrawn in Profile.
+- [ ] ✋ App description ends with: `Terms of use: https://nightfury0101.github.io/FuelFlow/#/terms`
+      (or paste the terms into App Store Connect → App Information → License Agreement).
+- [ ] ✋ Privacy policy URL set (see IOS.md).
+- [ ] ✋ Each subscription has a display name, description and **review screenshot**, and is
+      submitted **with** the app version (Apple won't review them separately the first time).
+- [ ] ✋ Review notes say how to reach Premium and that a Sandbox account works (text in IOS.md).
 
 ## 5. Test before release
 

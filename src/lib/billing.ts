@@ -71,7 +71,8 @@ export function storeKey(): string | null {
 
 /** Subscriptions can be offered: store app, plugin present and a RevenueCat key configured. */
 export function billingAvailable(): boolean {
-  if (!isNativeApp() || !storeKey()) return false;
+  // Premium's main feature is the built-in coach, so never sell it before the server is set.
+  if (!isNativeApp() || !storeKey() || !getPremiumConfig().coachUrl) return false;
   const b = bridge();
   if (!b?.nativePromise) return false;
   return !b.PluginHeaders || b.PluginHeaders.some((p) => p.name === 'Purchases');

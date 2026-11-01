@@ -140,6 +140,7 @@ export interface Profile {
   setupIncomplete: boolean; // user skipped body details
   scannerEndpoint?: string; // the user's private AI server for the coach (name kept for saved data)
   coachShareLog?: boolean; // opt-in: let the coach see a summary of the food log
+  aiConsent?: string; // where the person allowed coach data to be sent (see lib/aiConsent.ts); unset = not allowed
   theme?: ThemePref; // appearance; dark when unset
   waterQuickAdds: number[]; // ml
   createdAt: number;
